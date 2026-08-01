@@ -1,0 +1,171 @@
+{
+  "id": "ep-001",
+  "topic_id": "saturn-rings",
+  "languages": [
+    "tr",
+    "en"
+  ],
+  "age_min": 4,
+  "age_max": 8,
+  "scenes": [
+    {
+      "id": "s01",
+      "kind": "intro",
+      "visual": {
+        "query": "Earth from space blue marble",
+        "fallback_queries": [
+          "planet Earth space",
+          "stars nebula"
+        ],
+        "motion": "zoom_out",
+        "hero": true,
+        "clip_prompt": "A friendly cartoon rocket gliding past Saturn's glowing rings, soft pastel colors, children's picture book style, gentle and wondrous"
+      },
+      "narration": {
+        "tr": "Merhaba küçük kâşif! Bugün Satürn'ün Halkaları hakkında bir yolculuğa çıkıyoruz. Roketimize binelim ve birlikte keşfedelim.",
+        "en": "Hello little explorer! Today we are travelling to discover Saturn's Rings. Let's climb into our rocket and find out together."
+      }
+    },
+    {
+      "id": "s02",
+      "kind": "fact",
+      "visual": {
+        "query": "Saturn rings Cassini",
+        "fallback_queries": [
+          "Saturn's Rings"
+        ],
+        "motion": "zoom_in",
+        "hero": false,
+        "clip_prompt": null
+      },
+      "narration": {
+        "tr": "Satürn, Güneş'ten uzakta duran kocaman bir gezegen. Etrafında parlayan halkaları var.",
+        "en": "Saturn is a huge planet far from the Sun. It wears shining rings all around it."
+      }
+    },
+    {
+      "id": "s03",
+      "kind": "fact",
+      "visual": {
+        "query": "Saturn rings close up ice particles",
+        "fallback_queries": [
+          "Saturn's Rings"
+        ],
+        "motion": "zoom_out",
+        "hero": false,
+        "clip_prompt": null
+      },
+      "narration": {
+        "tr": "O halkalar aslında taştan değil. Milyonlarca minik buz parçasından oluşuyorlar.",
+        "en": "Those rings are not made of stone. They are millions of tiny pieces of ice."
+      }
+    },
+    {
+      "id": "s04",
+      "kind": "fact",
+      "visual": {
+        "query": "Saturn planet size comparison",
+        "fallback_queries": [
+          "Saturn's Rings"
+        ],
+        "motion": "pan_right",
+        "hero": false,
+        "clip_prompt": null
+      },
+      "narration": {
+        "tr": "Bazı buz parçaları toz kadar küçük. Bazıları ise bir ev kadar büyük!",
+        "en": "Some ice pieces are as small as dust. Others are as big as a house!"
+      }
+    },
+    {
+      "id": "s05",
+      "kind": "fact",
+      "visual": {
+        "query": "Saturn moon Titan",
+        "fallback_queries": [
+          "Saturn's Rings"
+        ],
+        "motion": "zoom_in",
+        "hero": false,
+        "clip_prompt": null
+      },
+      "narration": {
+        "tr": "Satürn'ün pek çok ayı var. En büyüğünün adı Titan ve sisli bir dünyası var.",
+        "en": "Saturn has many moons. The biggest one is called Titan and it is very foggy."
+      }
+    },
+    {
+      "id": "s06",
+      "kind": "fact",
+      "visual": {
+        "query": "Cassini spacecraft Saturn",
+        "fallback_queries": [
+          "Saturn's Rings"
+        ],
+        "motion": "pan_left",
+        "hero": false,
+        "clip_prompt": null
+      },
+      "narration": {
+        "tr": "Cassini adlı bir uzay aracı Satürn'ü uzun yıllar ziyaret etti. Bize oradan güzel fotoğraflar gönderdi.",
+        "en": "A spacecraft named Cassini visited Saturn for many years and sent us photographs."
+      }
+    },
+    {
+      "id": "s07",
+      "kind": "outro",
+      "visual": {
+        "query": "starfield night sky stars",
+        "fallback_queries": [
+          "nebula colorful",
+          "galaxy stars"
+        ],
+        "motion": "zoom_in",
+        "hero": false,
+        "clip_prompt": null
+      },
+      "narration": {
+        "tr": "Bugün Satürn'ün Halkaları hakkında çok şey öğrendik. Yeni bir uzay yolculuğunda yine görüşmek üzere. Hoşça kal!",
+        "en": "Today we learned so much about Saturn's Rings. See you on our next space adventure. Goodbye!"
+      }
+    }
+  ],
+  "localizations": {
+    "tr": {
+      "title": "🪐 Satürn'ün Halkaları | Çocuklar İçin Uzay",
+      "description": "Satürn'ün Halkaları hakkında merak ettiğin her şey! Küçük kâşifler için hazırlanmış sakin, eğlenceli bir uzay yolculuğu.\n\n🚀 Bu bölümde:\n• Satürn, Güneş'ten uzakta duran kocaman bir gezegen\n• O halkalar aslında taştan değil\n• Bazı buz parçaları toz kadar küçük\n• Satürn'ün pek çok ayı var\n• Cassini adlı bir uzay aracı Satürn'ü uzun yıllar ziyaret etti\n\n👶 4-8 yaş arası çocuklar için hazırlanmıştır.\n🔭 Görseller NASA'nın kamuya açık arşivinden alınmıştır.\n\n#uzay #çocuklariçin #eğitici #bilim",
+      "tags": [
+        "satürn",
+        "gezegen",
+        "halka",
+        "uzay",
+        "çocuk",
+        "çocuklar için",
+        "eğitici video",
+        "bilim",
+        "okul öncesi",
+        "gezegenler"
+      ],
+      "hook": "Uzaydaki Dev Hulahop!"
+    },
+    "en": {
+      "title": "🪐 Saturn's Rings | Space for Kids",
+      "description": "Everything you wondered about Saturn's Rings! A calm, playful space journey made for little explorers.\n\n🚀 In this episode:\n• Saturn is a huge planet far from the Sun\n• Those rings are not made of stone\n• Some ice pieces are as small as dust\n• Saturn has many moons\n• A spacecraft named Cassini visited Saturn for many years and sent us photographs\n\n👶 Made for children aged 4-8.\n🔭 Imagery comes from NASA's public domain archive.\n\n#space #forkids #educational #science",
+      "tags": [
+        "saturn",
+        "planet",
+        "rings",
+        "space",
+        "kids",
+        "for kids",
+        "educational",
+        "science",
+        "preschool",
+        "planets"
+      ],
+      "hook": "The Giant Hula Hoop in Space!"
+    }
+  },
+  "generator": "template",
+  "created_at": "2026-08-01T11:57:27.918978Z"
+}

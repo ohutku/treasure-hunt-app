@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Üretim çıktıları: bölüm klasörleri çalışma alanıdır, depoya girmez.
+# Örnek çıktılar examples/ altında tutulur.
+episodes/
+
+# Yerel ayarlar (API anahtarları buraya asla yazılmamalı — ortam değişkeni kullan)
+settings.toml
+
+# Fon müziği gibi telifli olabilecek yerel varlıklar
+assets/music/

@@ -1,0 +1,59 @@
+1
+00:00:00,000 --> 00:00:01,534
+Hello little explorer
+
+2
+00:00:01,534 --> 00:00:05,626
+Today we are travelling to discover Saturn's Rings
+
+3
+00:00:05,626 --> 00:00:10,230
+Let's climb into our rocket and find out together
+
+4
+00:00:10,230 --> 00:00:14,944
+Saturn is a huge planet far from the Sun
+
+5
+00:00:14,944 --> 00:00:18,610
+It wears shining rings all around it
+
+6
+00:00:18,610 --> 00:00:22,306
+Those rings are not made of stone
+
+7
+00:00:22,306 --> 00:00:26,530
+They are millions of tiny pieces of ice
+
+8
+00:00:26,530 --> 00:00:30,754
+Some ice pieces are as small as dust
+
+9
+00:00:30,754 --> 00:00:34,450
+Others are as big as a house
+
+10
+00:00:34,450 --> 00:00:36,562
+Saturn has many moons
+
+11
+00:00:36,562 --> 00:00:42,370
+The biggest one is called Titan and it is very foggy
+
+12
+00:00:42,370 --> 00:00:49,370
+A spacecraft named Cassini visited Saturn for many years and sent us photographs
+
+13
+00:00:49,370 --> 00:00:53,560
+Today we learned so much about Saturn's Rings
+
+14
+00:00:53,560 --> 00:00:57,226
+See you on our next space adventure
+
+15
+00:00:57,226 --> 00:00:58,426
+Goodbye
