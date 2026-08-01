@@ -54,6 +54,8 @@ class RenderResult:
     voice_fallbacks: int = 0
     #: AI klip üretilen sahneler.
     ai_clip_scenes: list[str] = field(default_factory=list)
+    #: Elle konmuş klibin kullanıldığı sahneler (clips/<sahne>.mp4).
+    manual_clip_scenes: list[str] = field(default_factory=list)
 
 
 def build_providers(
@@ -194,7 +196,18 @@ class Pipeline:
             images[scene.id] = self.image_provider.fetch(
                 scene, workspace.image_path(scene.id)
             )
-            clip = self.clip_provider.generate(scene, workspace.clip_path(scene.id))
+
+            # Elle konmuş klip her şeyin önünde gelir: kullanıcı klibi başka bir
+            # araçla üretip `clips/<sahne>.mp4` olarak bırakabilir. Bu, klip
+            # üretimini API'ye bağımlı olmaktan çıkarır ve `hero` işareti de
+            # gerektirmez — dosya varsa niyet bellidir.
+            clip_path = workspace.clip_path(scene.id)
+            if clip_path.is_file() and clip_path.stat().st_size > 0:
+                clips[scene.id] = clip_path
+                result.manual_clip_scenes.append(scene.id)
+                continue
+
+            clip = self.clip_provider.generate(scene, clip_path)
             if clip is not None:
                 clips[scene.id] = clip
                 result.ai_clip_scenes.append(scene.id)

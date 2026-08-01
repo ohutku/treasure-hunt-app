@@ -69,6 +69,11 @@ def _echo_result(result: RenderResult) -> None:
 
     if result.ai_clip_scenes:
         typer.echo(f"\n  🎬 AI klip üretilen sahneler: {', '.join(result.ai_clip_scenes)}")
+    if result.manual_clip_scenes:
+        typer.echo(
+            f"  📁 Elle konmuş klip kullanılan sahneler: "
+            f"{', '.join(result.manual_clip_scenes)}"
+        )
     if result.image_fallbacks:
         typer.secho(
             f"\n  ⚠️  Şu sahnelerde NASA görseli alınamadı, üretilen görsel kullanıldı: "

@@ -201,6 +201,26 @@ Sessizce temizlemek yerine **reddediyoruz** — istemi yazan kişinin bundan hab
 olmalı. Üretilen klipler `manifest.<dil>.json` içindeki `ai_clip_scenes` alanında
 işaretlenir, insan kontrolü için.
 
+### Kendi klibini koy (API gerekmez)
+
+Bir sahne için `episodes/<bölüm>/clips/<sahne>.mp4` yolunda bir dosya varsa
+pipeline onu **olduğu gibi kullanır** — AI sağlayıcısına hiç gitmez, `hero`
+işareti aramaz, kotadan düşmez. Klibi nerede ürettiğin sistemin umurunda değil.
+
+```bash
+spacekids script --topic mars --episode ep-002
+# klibi istediğin araçla üret, sonra:
+cp ~/indirilenler/roket.mp4 episodes/ep-002/clips/s01.mp4
+spacekids render ep-002
+```
+
+Klip videoya sığacak şekilde ölçeklenir, kırpılır ve sahne süresini dolduracak
+kadar döngüye alınır — uzunluğunun tam tutması gerekmez.
+
+> ⚠️ Ücretsiz katmanlarla üretilen klipler genelde **filigranlı ve yalnızca
+> kişisel kullanım** içindir (Dreamina'nın ücretsiz katmanı böyle). Para
+> kazanan bir kanalda kullanmadan önce o aracın lisans şartlarını oku.
+
 ### Korumalar
 
 | Koruma | Davranış |
@@ -209,6 +229,7 @@ işaretlenir, insan kontrolü için.
 | Yeniden çalıştırma | Var olan klip kotadan düşmez, yeniden üretilmez |
 | Hata | `None` döner → sahne durağan görsele düşer, pipeline durmaz |
 | Anahtar yok | Modül tamamen devre dışı |
+| Elle konmuş klip | Her şeyin önünde gelir, API'ye gidilmez |
 
 ---
 

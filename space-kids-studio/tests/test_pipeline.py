@@ -312,3 +312,49 @@ def test_run_uctan_uca_calisir(settings):
     result = pipeline.run(topic_id="the-moon", episode_id="ep-100", languages=["tr"])
     assert result.episode.topic_id == "the-moon"
     assert Path(result.manifests["tr"].video_path).is_file()
+
+
+# --- elle konmuş klipler ---------------------------------------------------
+
+
+@pytest.mark.slow
+def test_elle_konmus_klip_kullanilir(settings, episode):
+    """Kullanıcı klibi başka bir araçla üretip bırakabilmeli — API şart değil."""
+    from spacekids.media.ffmpeg import render_silence
+    from spacekids.media.video import render_scene
+
+    pipeline = _pipeline(settings)
+    workspace = pipeline.workspace(episode.id)
+    workspace.save_episode(episode)
+    workspace.prepare(["tr"])
+
+    # Geçerli bir mp4'ü elle yerleştir (herhangi bir araçla üretilmiş olabilir).
+    source_image = ProceduralImageProvider(size=(320, 180)).fetch(
+        episode.scenes[1], workspace.root / "kaynak.jpg"
+    )
+    audio = render_silence(workspace.root / "kaynak.mp3", 1.0)
+    render_scene(
+        destination=workspace.clip_path("s02"),
+        audio_path=audio,
+        duration=1.0,
+        settings=settings.video,
+        image_path=source_image,
+    )
+
+    result = pipeline.render(episode, languages=["tr"])
+
+    assert result.manual_clip_scenes == ["s02"]
+    assert result.ai_clip_scenes == []
+    assert Path(result.manifests["tr"].video_path).is_file()
+
+
+def test_bos_klip_dosyasi_yok_sayilir(settings, episode):
+    """0 baytlık bir dosya yarım kalmış indirme olabilir — klip sayılmamalı."""
+    pipeline = _pipeline(settings)
+    workspace = pipeline.workspace(episode.id)
+    workspace.save_episode(episode)
+    workspace.prepare(["tr"])
+    workspace.clip_path("s02").touch()
+
+    result = pipeline.render(episode, languages=["tr"])
+    assert result.manual_clip_scenes == []
