@@ -41,6 +41,8 @@ seslendirme ücretsiz Edge TTS ile yapılır.
 | `spacekids check ep-001` | Yaşa uygunluk denetimi çalıştırır |
 | `spacekids render ep-001` | Ses + görsel + video + altyazı + kapak |
 | `spacekids run --topic mars` | Hepsini sırayla |
+| `spacekids clips ep-001` | Yıldız sahneler için AI klibi üretir |
+| `spacekids providers` | AI klip sağlayıcılarını listeler |
 | `spacekids info ep-001` | Bölümün mevcut durumu |
 
 Yararlı bayraklar:
@@ -123,28 +125,90 @@ otomatik olarak yedeğe düşülür — **ağ sorunu pipeline'ı asla durdurmaz.
 | Görsel | NASA Image Library (kamu malı, anahtarsız) | Prosedürel yıldız alanı (Pillow) |
 | Ses | Edge TTS (ücretsiz, TR + EN) | Tahmini süre kadar sessizlik |
 | Senaryo | Claude (`--llm`) | Bilgi kartlarından şablon |
-| AI klip | Seedance (kota korumalı) | Yok — durağan görsele düşer |
+| AI klip | Seedance (kota + istem süzgeci) | Yok — durağan görsele düşer |
 
-### Seedance hakkında
+## AI klipleri (Seedance)
 
 Seedance klip başına **5-10 saniye** üretir. 5 dakikalık bir bölüm 30-60 klip demek —
 ne ücretsiz kotaya sığar ne de bütçeye. Bu yüzden sistem hibrit çalışır:
 
 - **Omurga**: NASA görselleri + Ken Burns hareketi (bedava, telifsiz)
-- **Yıldız sahneler**: `hero` işaretli 3-5 sahne için Seedance klibi
+- **Yıldız sahneler**: `hero` işaretli sahneler için AI klibi (varsayılan tavan: 3)
 
-Kota koruması bölüm başına sabittir (`max_clips_per_episode`, varsayılan 3) ve
-önceden üretilmiş klipler kotadan düşmez. Anahtar yoksa modül tamamen devre dışıdır.
+### Erişim durumu — okuman gereken kısım
+
+Seedance'in erişimi 2026 boyunca çalkantılıydı ve bu, hangi servisi seçeceğini
+doğrudan etkiliyor:
+
+| Tarih | Ne oldu |
+|---|---|
+| 12 Şub 2026 | Seedance 2.0 çıktı |
+| ~Mart 2026 | Warner Bros. ve Disney telif ihtarı gönderdi: modelin mimari düzeyde telifli karakter tasarımları taşıdığı iddiası |
+| 15 Mart 2026 | ByteDance **uluslararası API'yi askıya aldı** |
+| 16 Tem 2026 | Seedance **2.5** BytePlus üzerinden yeniden açıldı — ihtarlar hâlâ yanıtsız |
+
+Askı döneminde ortaya çıkan aracı servislerin bir kısmı Çin içi uç noktalara
+yönlendirme yapıyor. Bu yüzden:
+
+- **Resmi yolu tercih et** (`byteplus`) — birinci parti, kayıtta ücretsiz token,
+  kart istemiyor.
+- Aracı servislere kart bilgisi vermeden önce iki kez düşün; erişimleri bir
+  gecede kesilebilir.
+- **Çocuk kanalı için ek risk**: üretilen bir karenin tanınabilir bir çizgi film
+  karakterine benzemesi hem telif hem kanal güvenilirliği açısından en kötü
+  senaryo. Sistem bunu istem süzgeciyle azaltıyor (aşağıda) ama **her klibi
+  gözle kontrol et**.
+
+### Sağlayıcı seçimi
 
 ```bash
-export SEEDANCE_API_KEY=...     # veya BYTEPLUS_API_KEY
-.venv/bin/spacekids run --topic mars
+.venv/bin/spacekids providers        # seçenekleri ve ücretsiz kullanım notlarını gör
 ```
 
-> ⚠️ Seedance istek/yanıt şekilleri sağlayıcıların belgelenmiş iş akışına göre
-> yazıldı ama **canlı bir anahtarla doğrulanmadı** (bu depoda anahtar yok).
-> Uyumsuzluk çıkarsa `providers/seedance.py` içindeki `_submit` ve
-> `_extract_video_url` noktalarını ayarlaman yeterli.
+Wire formatı Python'a gömülü değil, `config/clip_providers.yaml` içinde **veri
+olarak** duruyor. Bir servis alan adını ya da alan adlandırmasını değiştirirse
+YAML'ı düzeltmen yeterli. Hazır profiller: `byteplus`, `fal`, `wavespeed`,
+`piapi`, `kie`.
+
+> ⚠️ **Profillerin hiçbiri canlı anahtarla doğrulanmadı** (`verified: false`) —
+> bu depoda anahtar yok ve geliştirme ortamından bu hostlara erişim kapalıydı.
+> Şekiller belgelenmiş iş akışlarına göre yazıldı. Bu yüzden `--dry-run` var.
+
+### Kullanım
+
+```bash
+export SEEDANCE_API_KEY=...              # anahtar bulunması klip üretimini açar
+export SPACEKIDS_CLIP_PROVIDER=byteplus  # opsiyonel, varsayılan zaten byteplus
+
+spacekids clips ep-001 --dry-run         # 1) kota harcamadan ne gönderileceğini gör
+spacekids clips ep-001 --limit 1         # 2) tek klip üret, gözle kontrol et
+spacekids render ep-001                  # 3) beğendiysen videoya al
+```
+
+`--dry-run` ağa hiç çıkmaz; tam URL'yi, gövdeyi ve süzgeçten geçmiş istemi basar.
+Bir alan uyuşmuyorsa YAML'ı düzeltip tekrar denersin — anahtar yakmadan.
+
+### İstem süzgeci
+
+Klip istemleri modele gitmeden önce denetlenir:
+
+- **Reddedilir**: marka/franchise/karakter adı geçen istemler (Disney, Pixar,
+  Elsa, Paw Patrol, Pikachu…), gerçek kişiye benzetme talepleri
+- **Eklenir**: "özgün eser, tanınabilir karakter yok, logo yok, ekran yazısı yok"
+  kısıtları
+
+Sessizce temizlemek yerine **reddediyoruz** — istemi yazan kişinin bundan haberi
+olmalı. Üretilen klipler `manifest.<dil>.json` içindeki `ai_clip_scenes` alanında
+işaretlenir, insan kontrolü için.
+
+### Korumalar
+
+| Koruma | Davranış |
+|---|---|
+| Kota | Bölüm başına tavan (`max_clips_per_episode`, varsayılan 3) |
+| Yeniden çalıştırma | Var olan klip kotadan düşmez, yeniden üretilmez |
+| Hata | `None` döner → sahne durağan görsele düşer, pipeline durmaz |
+| Anahtar yok | Modül tamamen devre dışı |
 
 ---
 
@@ -198,14 +262,17 @@ fade_duration = 0.4        # sahne geçişi karartması
 music_path = "assets/music/ambient.mp3"   # opsiyonel fon müziği
 music_volume = 0.12
 
-[seedance]
+[clips]
 enabled = false
+provider = "byteplus"        # bkz. config/clip_providers.yaml
+model = ""                   # boşsa profilin varsayılanı
 max_clips_per_episode = 3
 clip_seconds = 5
+resolution = "720p"
 ```
 
 **API anahtarları yalnızca ortam değişkenlerinden okunur** (`ANTHROPIC_API_KEY`,
-`SEEDANCE_API_KEY`) — kazara commit'lenmesin diye TOML'dan anahtar okunmuyor.
+`SEEDANCE_API_KEY` / `SPACEKIDS_CLIP_API_KEY`) — kazara commit'lenmesin diye TOML'dan anahtar okunmuyor.
 
 Kurumsal TLS proxy'si arkasındaysan `SSL_CERT_FILE` (veya `SPACEKIDS_CA_BUNDLE`)
 ayarlaman yeterli; seslendirme katmanı bunu güven deposuna ekler.
@@ -215,13 +282,14 @@ ayarlaman yeterli; seslendirme katmanı bunu güven deposuna ekler.
 ## Testler
 
 ```bash
-.venv/bin/python -m pytest              # 155 test, ~10 saniye
+.venv/bin/python -m pytest              # 202 test, ~10 saniye
 .venv/bin/python -m pytest -m "not slow"  # ffmpeg render'larını atla
 .venv/bin/python -m pytest --cov=spacekids
 ```
 
-Hiçbir test ağa çıkmaz: NASA ve Seedance sahte HTTP taşımasıyla, seslendirme
-sessizlik üreticisiyle, Claude ise sahte istemciyle test edilir.
+Hiçbir test ağa çıkmaz: NASA ve klip sağlayıcıları sahte HTTP taşımasıyla,
+seslendirme sessizlik üreticisiyle, Claude ise sahte istemciyle test edilir.
+Beş klip profilinin her biri kendi yanıt yapısıyla ayrı ayrı doğrulanır.
 
 ---
 
@@ -239,7 +307,7 @@ sessizlik üreticisiyle, Claude ise sahte istemciyle test edilir.
 
 1. YouTube Data API ile taslak yükleme (OAuth)
 2. Toplu bölüm üretimi (bir komutta N bölüm)
-3. Seedance'in canlı anahtarla doğrulanması
+3. Klip profillerinin canlı anahtarla doğrulanması (`verified: true` işaretlemesi)
 4. Web arayüzü — çekirdek mantık zaten arayüzden bağımsız
 
 ---

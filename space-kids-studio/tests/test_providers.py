@@ -5,7 +5,6 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from spacekids.config import SeedanceSettings
 from spacekids.models import Motion, Scene, SceneKind, Visual
 from spacekids.providers.fake import FailingImageProvider, FailingVoiceProvider
 from spacekids.providers.images import (
@@ -14,7 +13,6 @@ from spacekids.providers.images import (
     ProceduralImageProvider,
     normalize,
 )
-from spacekids.providers.seedance import NullClipProvider, SeedanceClipProvider, _extract_video_url
 from spacekids.providers.voice import FallbackVoiceProvider, SilentVoiceProvider, configure_tls
 from spacekids.media.ffmpeg import probe_duration
 
@@ -155,102 +153,3 @@ def test_tls_yapilandirmasi_ca_yoksa_sessizce_gecer(monkeypatch):
         _SSL_CTX = None
 
     assert configure_tls(Module) is False
-
-
-# --- Seedance --------------------------------------------------------------
-
-
-def test_seedance_kapaliyken_klip_uretmez(tmp_path):
-    provider = SeedanceClipProvider(SeedanceSettings(enabled=False))
-    assert provider.generate(_scene(hero=True), tmp_path / "s01.mp4") is None
-
-
-def test_seedance_anahtarsiz_klip_uretmez(tmp_path):
-    provider = SeedanceClipProvider(SeedanceSettings(enabled=True, api_key=None))
-    assert provider.is_available() is False
-    assert provider.generate(_scene(hero=True), tmp_path / "s01.mp4") is None
-
-
-def test_seedance_hero_olmayan_sahneyi_atlar(tmp_path):
-    provider = SeedanceClipProvider(SeedanceSettings(enabled=True, api_key="k"))
-    assert provider.generate(_scene(hero=False), tmp_path / "s01.mp4") is None
-
-
-def test_seedance_kotasi_uygulanir(tmp_path):
-    """Bölüm başına klip tavanı aşılamamalı — bütçe koruması."""
-    settings = SeedanceSettings(enabled=True, api_key="k", max_clips_per_episode=2)
-    provider = SeedanceClipProvider(settings)
-    provider.clips_generated = 2
-
-    assert provider.quota_remaining == 0
-    assert provider.generate(_scene(hero=True), tmp_path / "s01.mp4") is None
-    assert any("kota" in reason for reason in provider.skipped)
-
-
-def test_seedance_hata_durumunda_pipelini_kirmaz(tmp_path):
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(500, json={"error": "sunucu hatası"})
-
-    provider = SeedanceClipProvider(
-        SeedanceSettings(enabled=True, api_key="k"),
-        client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    assert provider.generate(_scene(hero=True), tmp_path / "s01.mp4") is None
-    assert provider.clips_generated == 0
-    assert provider.skipped
-
-
-def test_seedance_basarili_akis(tmp_path):
-    """Görev gönder → tamamlanmayı bekle → videoyu indir."""
-    calls: list[str] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        calls.append(f"{request.method} {request.url.path}")
-        if request.method == "POST":
-            return httpx.Response(200, json={"id": "task-1"})
-        if request.url.path.endswith("task-1"):
-            return httpx.Response(
-                200,
-                json={"status": "succeeded", "content": {"video_url": "https://x/v.mp4"}},
-            )
-        return httpx.Response(200, content=b"video-baytlari")
-
-    provider = SeedanceClipProvider(
-        SeedanceSettings(enabled=True, api_key="k"),
-        client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    path = provider.generate(_scene(hero=True), tmp_path / "s01.mp4")
-
-    assert path is not None and path.read_bytes() == b"video-baytlari"
-    assert provider.clips_generated == 1
-    assert any("POST" in call for call in calls)
-
-
-def test_seedance_var_olan_klip_kotadan_dusmez(tmp_path):
-    destination = tmp_path / "s01.mp4"
-    destination.write_bytes(b"onceden-uretilmis")
-    provider = SeedanceClipProvider(SeedanceSettings(enabled=True, api_key="k"))
-
-    assert provider.generate(_scene(hero=True), destination) == destination
-    assert provider.clips_generated == 0
-
-
-@pytest.mark.parametrize(
-    "payload",
-    [
-        {"content": {"video_url": "https://x/a.mp4"}},
-        {"video": {"url": "https://x/a.mp4"}},
-        {"video_url": "https://x/a.mp4"},
-        {"url": "https://x/a.mp4"},
-    ],
-)
-def test_video_baglantisi_farkli_yerlesimlerden_okunur(payload):
-    assert _extract_video_url(payload) == "https://x/a.mp4"
-
-
-def test_video_baglantisi_yoksa_none_doner():
-    assert _extract_video_url({"status": "succeeded"}) is None
-
-
-def test_null_klip_saglayicisi_daima_none_doner(tmp_path):
-    assert NullClipProvider().generate(_scene(hero=True), tmp_path / "x.mp4") is None

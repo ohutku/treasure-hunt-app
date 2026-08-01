@@ -25,7 +25,8 @@ from .providers.images import (
     NasaImageProvider,
     ProceduralImageProvider,
 )
-from .providers.seedance import NullClipProvider, SeedanceClipProvider
+from .providers.clips import ClipProvider as RemoteClipProvider
+from .providers.clips import NullClipProvider
 from .providers.voice import EdgeVoiceProvider, FallbackVoiceProvider, SilentVoiceProvider
 from .publish.metadata import build_youtube_metadata
 from .publish.thumbnail import build_thumbnail
@@ -73,11 +74,17 @@ def build_providers(
 
     images = FallbackImageProvider(NasaImageProvider(), procedural)
     voices = FallbackVoiceProvider(EdgeVoiceProvider(settings.voices), silent)
-    clips: ClipProvider = (
-        SeedanceClipProvider(settings.seedance)
-        if settings.seedance.enabled and settings.seedance.api_key
-        else NullClipProvider()
-    )
+
+    clips: ClipProvider = NullClipProvider()
+    if settings.clips.enabled and settings.clips.api_key:
+        try:
+            clips = RemoteClipProvider.from_settings(
+                settings.clips, settings.clip_providers_file
+            )
+        except (KeyError, FileNotFoundError, ValueError) as error:
+            # Yanlış yapılandırılmış bir klip sağlayıcısı bölümü durdurmamalı.
+            logger.warning("AI klip sağlayıcısı kurulamadı, devre dışı: %s", error)
+
     return images, voices, clips
 
 

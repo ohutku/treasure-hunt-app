@@ -92,6 +92,63 @@ def test_render_komutu_denetimden_kalan_bolumu_reddeder(tmp_path, episode):
     assert "Güvenlik denetimi" in result.stdout
 
 
+def test_providers_komutu_saglayicilari_listeler():
+    result = _run("providers")
+    assert result.exit_code == 0
+    assert "byteplus" in result.stdout
+    assert "doğrulanmadı" in result.stdout, "doğrulanmamışlık uyarısı görünmeli"
+
+
+def test_clips_dry_run_aga_cikmadan_istegi_gosterir(tmp_path, episode):
+    EpisodeWorkspace(tmp_path, episode.id).save_episode(episode)
+    result = _run("clips", episode.id, "--dry-run", "--workspace", str(tmp_path))
+
+    assert result.exit_code == 0
+    assert "Prova çalıştırması" in result.stdout
+    assert "seedance" in result.stdout
+    # Süzgecin eklediği kısıtlar istemde görünmeli.
+    assert "No recognizable cartoon characters" in result.stdout
+
+
+def test_clips_dry_run_saglayici_secimine_uyar(tmp_path, episode):
+    EpisodeWorkspace(tmp_path, episode.id).save_episode(episode)
+    result = _run(
+        "clips", episode.id, "--dry-run", "--provider", "fal", "--workspace", str(tmp_path)
+    )
+    assert result.exit_code == 0
+    assert "fal" in result.stdout
+
+
+def test_clips_bilinmeyen_saglayicida_hata_verir(tmp_path, episode):
+    EpisodeWorkspace(tmp_path, episode.id).save_episode(episode)
+    result = _run(
+        "clips", episode.id, "--provider", "yok-boyle", "--workspace", str(tmp_path)
+    )
+    assert result.exit_code == 1
+    assert "bulunamadı" in result.stdout
+
+
+def test_clips_anahtarsiz_calistirma_yol_gosterir(tmp_path, episode, monkeypatch):
+    for var in ("SPACEKIDS_CLIP_API_KEY", "SEEDANCE_API_KEY", "BYTEPLUS_API_KEY"):
+        monkeypatch.delenv(var, raising=False)
+    EpisodeWorkspace(tmp_path, episode.id).save_episode(episode)
+
+    result = _run("clips", episode.id, "--workspace", str(tmp_path))
+    assert result.exit_code == 1
+    assert "SEEDANCE_API_KEY" in result.stdout
+
+
+def test_clips_hero_sahnesi_yoksa_bilgilendirir(tmp_path, episode):
+    for scene in episode.scenes:
+        scene.visual.hero = False
+        scene.visual.clip_prompt = None
+    EpisodeWorkspace(tmp_path, episode.id).save_episode(episode)
+
+    result = _run("clips", episode.id, "--workspace", str(tmp_path))
+    assert result.exit_code == 0
+    assert "hero" in result.stdout
+
+
 @pytest.mark.slow
 def test_render_komutu_video_uretir(tmp_path, episode):
     EpisodeWorkspace(tmp_path, episode.id).save_episode(episode)

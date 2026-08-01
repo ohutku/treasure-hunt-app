@@ -40,25 +40,30 @@ class VideoSettings(BaseModel):
     music_volume: float = 0.12
 
 
-class SeedanceSettings(BaseModel):
-    """AI video klibi (ByteDance Seedance) ayarları.
+class ClipSettings(BaseModel):
+    """AI video klibi (Seedance ve benzerleri) ayarları.
 
     Seedance klip başına 5-10 saniye üretir; tüm videoyu bu şekilde üretmek hem
     ücretsiz kotayı hem de bütçeyi aşar. Bu yüzden yalnızca `hero` işaretli
     sahnelerde ve sıkı bir kota altında kullanılır.
+
+    Hangi servise gidileceği `provider` ile seçilir; servisin istek/yanıt şekli
+    `config/clip_providers.yaml` içinde tanımlıdır.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
-    #: "byteplus" (resmi ModelArk) veya "fal" (3. parti).
+    #: config/clip_providers.yaml içindeki profil kimliği.
     provider: str = "byteplus"
-    model: str = "seedance-2-0"
+    #: Boş bırakılırsa profilin varsayılan modeli kullanılır.
+    model: str = ""
     #: Bölüm başına üretilecek azami klip sayısı — bütçe koruması.
     max_clips_per_episode: int = 3
     clip_seconds: int = 5
+    #: Ücretsiz kotalar genelde 720p'de en uzun gider.
+    resolution: str = "720p"
     api_key: str | None = None
-    base_url: str | None = None
     timeout: float = 300.0
 
 
@@ -79,7 +84,8 @@ class Settings(BaseModel):
     fact_scene_count: int = 6
 
     video: VideoSettings = Field(default_factory=VideoSettings)
-    seedance: SeedanceSettings = Field(default_factory=SeedanceSettings)
+    clips: ClipSettings = Field(default_factory=ClipSettings)
+    clip_providers_file: Path = PROJECT_ROOT / "config" / "clip_providers.yaml"
 
     #: True ise hiçbir dış servise çıkılmaz: sesler sessiz, görseller prosedürel üretilir.
     offline: bool = False
@@ -109,15 +115,25 @@ class Settings(BaseModel):
         if env_key:
             data["anthropic_api_key"] = env_key
 
-        seedance = dict(data.get("seedance") or {})  # type: ignore[arg-type]
-        seedance_key = os.environ.get("SEEDANCE_API_KEY") or os.environ.get(
-            "BYTEPLUS_API_KEY"
+        clips = dict(data.get("clips") or {})  # type: ignore[arg-type]
+        # Anahtar bulunması klip üretimini kendiliğinden açar: kullanıcı anahtarı
+        # tanımlamışsa niyeti bellidir, ayrıca bir bayrak beklemek gereksiz sürtünme.
+        clip_key = next(
+            (
+                os.environ[var]
+                for var in ("SPACEKIDS_CLIP_API_KEY", "SEEDANCE_API_KEY", "BYTEPLUS_API_KEY")
+                if os.environ.get(var)
+            ),
+            None,
         )
-        if seedance_key:
-            seedance["api_key"] = seedance_key
-            seedance.setdefault("enabled", True)
-        if seedance:
-            data["seedance"] = seedance
+        if clip_key:
+            clips["api_key"] = clip_key
+            clips.setdefault("enabled", True)
+        clip_provider = os.environ.get("SPACEKIDS_CLIP_PROVIDER")
+        if clip_provider:
+            clips["provider"] = clip_provider
+        if clips:
+            data["clips"] = clips
 
         data.update({key: value for key, value in overrides.items() if value is not None})
         return cls.model_validate(data)

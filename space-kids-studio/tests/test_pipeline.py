@@ -14,7 +14,7 @@ from spacekids.models import Motion
 from spacekids.pipeline import Pipeline, PipelineError, build_providers
 from spacekids.providers.fake import RecordingImageProvider, RecordingVoiceProvider
 from spacekids.providers.images import ProceduralImageProvider
-from spacekids.providers.seedance import NullClipProvider
+from spacekids.providers.clips import NullClipProvider
 from spacekids.publish.thumbnail import THUMBNAIL_SIZE, build_thumbnail
 from spacekids.workspace import EpisodeWorkspace, next_episode_id
 

@@ -1,0 +1,149 @@
+# AI video klibi sağlayıcıları.
+#
+# ⚠️ ÖNEMLİ — bu profillerin hiçbiri canlı bir anahtarla doğrulanmadı
+# (`verified: false`). Seedance'in erişim durumu 2026 boyunca çok değişti:
+# ByteDance uluslararası API'yi 15 Mart 2026'da askıya aldı (Hollywood
+# stüdyolarının telif ihtarları), 16 Temmuz 2026'da Seedance 2.5 ile BytePlus
+# üzerinden yeniden açtı. Bu dönemde ortaya çıkan aracı servislerin bir kısmı
+# Çin içi uç noktalara yönlendirme yapıyor.
+#
+# Bu yüzden wire formatı koda gömülmedi: bir alan uyuşmazsa aşağıdaki YAML'ı
+# düzeltmen yeterli, Python'a dokunmana gerek yok. `spacekids clips --dry-run`
+# komutu kota harcamadan tam olarak ne gönderileceğini gösterir.
+#
+# Şablon yer tutucuları: {model} {prompt} {duration} {resolution} {task_id}
+
+version: 1
+
+providers:
+  # --- Resmi yol: ByteDance'in kendi bulutu -------------------------------
+  # Tek "birinci parti" seçenek. Kayıtta görsel modeller için ücretsiz token
+  # veriliyor ve kart istemiyor. Aracı servislere göre daha öngörülebilir.
+  - id: byteplus
+    label: "BytePlus ModelArk (resmi)"
+    signup_url: "https://www.byteplus.com/en/product/modelark"
+    free_tier: "Kayıtta ücretsiz token (görsel modeller için ~2M), kart istemez"
+    base_url: "https://ark.ap-southeast.bytepluses.com/api/v3"
+    auth_value: "Bearer {key}"
+    default_model: "seedance-2-5"
+    submit:
+      path: "/contents/generations/tasks"
+      body:
+        model: "{model}"
+        content:
+          - type: "text"
+            text: "{prompt} --resolution {resolution} --duration {duration}"
+      task_id_paths: ["id", "data.id"]
+    poll:
+      path: "/contents/generations/tasks/{task_id}"
+      status_paths: ["status", "data.status"]
+      succeeded: ["succeeded", "success", "completed"]
+      failed: ["failed", "cancelled", "canceled", "error"]
+      error_paths: ["error.message", "error", "data.error"]
+    result:
+      video_url_paths: ["content.video_url", "data.content.video_url", "video_url"]
+    notes: >-
+      Seedance 2.5 Temmuz 2026'da bu platformda yeniden açıldı. Model kimliği
+      hesabında farklı görünüyorsa --model ile geçersiz kıl.
+
+  # --- Aracı servisler ----------------------------------------------------
+  # Bunlar ByteDance'in kendisi değil; kendi kotalarını ve fiyatlarını
+  # uyguluyorlar. Ücretsiz kredi verenler genelde kayıt sonrası bir kerelik
+  # kredi veriyor, "sınırsız ücretsiz" iddialarına güvenme.
+  - id: fal
+    label: "fal.ai"
+    signup_url: "https://fal.ai/"
+    free_tier: "Kayıtta bir kerelik kredi; sonrası kullandıkça öde"
+    base_url: "https://queue.fal.run"
+    auth_value: "Key {key}"
+    default_model: "bytedance/seedance"
+    submit:
+      path: "/fal-ai/{model}"
+      body:
+        prompt: "{prompt}"
+        duration: "{duration}"
+        resolution: "{resolution}"
+      task_id_paths: ["request_id"]
+    poll:
+      path: "/fal-ai/{model}/requests/{task_id}/status"
+      status_paths: ["status"]
+      succeeded: ["COMPLETED", "completed"]
+      failed: ["FAILED", "failed", "ERROR"]
+      error_paths: ["error", "detail"]
+    result:
+      path: "/fal-ai/{model}/requests/{task_id}"
+      video_url_paths: ["video.url", "videos.0.url", "output.video.url"]
+
+  - id: wavespeed
+    label: "WaveSpeedAI"
+    signup_url: "https://wavespeed.ai/"
+    free_tier: "Kayıtta deneme kredisi"
+    base_url: "https://api.wavespeed.ai/api/v3"
+    auth_value: "Bearer {key}"
+    default_model: "bytedance/seedance-v2-t2v"
+    submit:
+      path: "/{model}"
+      body:
+        prompt: "{prompt}"
+        duration: "{duration}"
+        resolution: "{resolution}"
+      task_id_paths: ["data.id", "id"]
+    poll:
+      path: "/predictions/{task_id}/result"
+      status_paths: ["data.status", "status"]
+      succeeded: ["completed", "succeeded"]
+      failed: ["failed", "error"]
+      error_paths: ["data.error", "error"]
+    result:
+      video_url_paths: ["data.outputs.0", "outputs.0", "data.output.video_url"]
+
+  - id: piapi
+    label: "PiAPI"
+    signup_url: "https://piapi.ai/"
+    free_tier: "Kayıtta sınırlı deneme kredisi"
+    base_url: "https://api.piapi.ai/api/v1"
+    auth_header: "x-api-key"
+    auth_value: "{key}"
+    default_model: "seedance"
+    submit:
+      path: "/task"
+      body:
+        model: "{model}"
+        task_type: "video_generation"
+        input:
+          prompt: "{prompt}"
+          duration: "{duration}"
+          resolution: "{resolution}"
+      task_id_paths: ["data.task_id", "task_id"]
+    poll:
+      path: "/task/{task_id}"
+      status_paths: ["data.status", "status"]
+      succeeded: ["completed", "success", "succeeded"]
+      failed: ["failed", "error"]
+      error_paths: ["data.error.message", "data.error", "message"]
+    result:
+      video_url_paths: ["data.output.video_url", "data.output.works.0.video.resource", "data.output.url"]
+
+  - id: kie
+    label: "Kie.ai"
+    signup_url: "https://kie.ai/"
+    free_tier: "Yeni hesaplara ücretsiz kredi"
+    base_url: "https://api.kie.ai/api/v1"
+    auth_value: "Bearer {key}"
+    default_model: "seedance-v2"
+    submit:
+      path: "/veo/generate"
+      body:
+        model: "{model}"
+        prompt: "{prompt}"
+        duration: "{duration}"
+        resolution: "{resolution}"
+      task_id_paths: ["data.taskId", "data.task_id", "taskId"]
+    poll:
+      path: "/veo/record-info?taskId={task_id}"
+      status_paths: ["data.successFlag", "data.status", "status"]
+      succeeded: ["1", "success", "completed"]
+      failed: ["2", "3", "failed", "error"]
+      error_paths: ["data.errorMessage", "msg"]
+    result:
+      video_url_paths: ["data.response.resultUrls.0", "data.resultUrls.0", "data.videoUrl"]

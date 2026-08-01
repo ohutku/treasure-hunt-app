@@ -13,6 +13,7 @@ edersin.
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
@@ -195,6 +196,126 @@ def run_all(
         typer.secho(f"\n❌ {error}", fg=typer.colors.RED)
         raise typer.Exit(code=1) from error
     _echo_result(result)
+
+
+@app.command("providers")
+def list_clip_providers() -> None:
+    """AI klip sağlayıcılarını ve ücretsiz kullanım notlarını listeler."""
+    from .providers.clip_profiles import load_clip_providers
+
+    settings = Settings.load()
+    library = load_clip_providers(settings.clip_providers_file)
+
+    typer.secho(f"{len(library.providers)} klip sağlayıcısı:\n", bold=True)
+    for profile in library.providers:
+        mark = "✅" if profile.verified else "⚠️ "
+        typer.secho(f"  {mark} {profile.id:12s} {profile.label}", bold=True)
+        if profile.free_tier:
+            typer.echo(f"       ücretsiz : {profile.free_tier}")
+        if profile.signup_url:
+            typer.echo(f"       kayıt    : {profile.signup_url}")
+        typer.echo(f"       model    : {profile.default_model}")
+
+    typer.secho(
+        "\n⚠️  Hiçbir profil canlı anahtarla doğrulanmadı. Anahtarını aldıktan sonra\n"
+        "   önce 'spacekids clips <bölüm> --dry-run' ile ne gönderileceğini gör,\n"
+        "   sonra tek klip üretip kontrol et.",
+        fg=typer.colors.YELLOW,
+    )
+
+
+@app.command("clips")
+def generate_clips(
+    episode: str = typer.Argument(..., help="Bölüm kimliği."),
+    provider: str | None = typer.Option(None, help="Klip sağlayıcısı (bkz. 'spacekids providers')."),
+    model: str | None = typer.Option(None, help="Model kimliğini geçersiz kıl."),
+    limit: int | None = typer.Option(None, help="Bu çalıştırmada üretilecek azami klip."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Ağa çıkma, gönderilecek isteği göster."),
+    workspace: Path | None = typer.Option(None, help="Bölüm klasörlerinin kökü."),
+) -> None:
+    """Bölümün yıldız sahneleri için AI video klipleri üretir.
+
+    Klipler render'dan bağımsız üretilebilir: önce burada üretip gözle kontrol
+    eder, beğenirsen 'render' ile videoya alırsın.
+    """
+    from .providers.clip_profiles import load_clip_providers
+    from .providers.clip_safety import ClipPromptRejected
+    from .providers.clips import ClipProvider as RemoteClipProvider
+
+    settings = _settings(workspace=workspace)
+    if provider:
+        settings.clips.provider = provider
+    if model:
+        settings.clips.model = model
+    if limit is not None:
+        settings.clips.max_clips_per_episode = limit
+
+    space = EpisodeWorkspace(settings.workspace, episode)
+    loaded = space.load_episode()
+    hero_scenes = loaded.hero_scenes()
+
+    if not hero_scenes:
+        typer.secho(
+            "Bu bölümde 'hero' işaretli sahne yok — klip üretilecek yer yok.",
+            fg=typer.colors.YELLOW,
+        )
+        return
+
+    try:
+        library = load_clip_providers(settings.clip_providers_file)
+        profile = library.get(settings.clips.provider)
+    except (KeyError, FileNotFoundError, ValueError) as error:
+        typer.secho(f"❌ {error}", fg=typer.colors.RED)
+        raise typer.Exit(code=1) from error
+
+    clip_provider = RemoteClipProvider(settings.clips, profile)
+
+    if dry_run:
+        typer.secho(
+            f"🔍 Prova çalıştırması — {profile.label} ({profile.id}), hiçbir istek gönderilmiyor\n",
+            bold=True,
+        )
+        for scene in hero_scenes[: settings.clips.max_clips_per_episode]:
+            try:
+                request = clip_provider.prepare(scene)
+            except ClipPromptRejected as error:
+                typer.secho(f"  ❌ {scene.id}: {error}", fg=typer.colors.RED)
+                continue
+            typer.secho(f"  {scene.id} → {request.url}", fg=typer.colors.GREEN)
+            typer.echo(f"     model: {request.model}")
+            typer.echo(
+                "     gövde: "
+                + json.dumps(request.body, ensure_ascii=False, indent=6)[:600]
+            )
+        typer.echo(
+            f"\n  Kota: bölüm başına en fazla {settings.clips.max_clips_per_episode} klip, "
+            f"{settings.clips.clip_seconds} sn, {settings.clips.resolution}"
+        )
+        return
+
+    if not clip_provider.is_available():
+        typer.secho(
+            "❌ Klip üretimi kapalı. Anahtarını ortam değişkenine koy:\n"
+            "   export SEEDANCE_API_KEY=...   (veya SPACEKIDS_CLIP_API_KEY)\n"
+            f"   Anahtar için: {profile.signup_url or profile.label}",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    space.clips_dir.mkdir(parents=True, exist_ok=True)
+    produced: list[str] = []
+    for scene in hero_scenes:
+        typer.echo(f"  {scene.id} üretiliyor…")
+        path = clip_provider.generate(scene, space.clip_path(scene.id))
+        if path:
+            produced.append(scene.id)
+            typer.secho(f"    ✅ {path}", fg=typer.colors.GREEN)
+
+    typer.secho(f"\n{len(produced)} klip üretildi.", bold=True)
+    for reason in clip_provider.skipped:
+        typer.secho(f"  ⚠️  {reason}", fg=typer.colors.YELLOW)
+    if produced:
+        typer.echo("\nKliplerı gözden geçir, sonra: spacekids render " + episode)
 
 
 @app.command("info")
