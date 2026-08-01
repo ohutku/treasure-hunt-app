@@ -203,6 +203,110 @@ def run_all(
     _echo_result(result)
 
 
+def _format_duration(seconds: float) -> str:
+    minutes, secs = divmod(int(seconds), 60)
+    if minutes >= 60:
+        hours, minutes = divmod(minutes, 60)
+        return f"{hours} sa {minutes} dk"
+    return f"{minutes} dk {secs} sn" if minutes else f"{secs} sn"
+
+
+@app.command("batch")
+def batch_run(
+    count: int = typer.Option(3, "--count", "-n", min=1, help="Üretilecek bölüm sayısı."),
+    topics_option: str | None = typer.Option(
+        None, "--topics", help="Virgülle ayrılmış konu kimlikleri (sıra korunur)."
+    ),
+    languages: str | None = typer.Option(None, help="Virgülle ayrılmış diller."),
+    retry: bool = typer.Option(
+        False, "--retry", help="Yeni bölüm üretme; yarım kalanları tamamla."
+    ),
+    offline: bool = typer.Option(False, "--offline", help="Dış servislere çıkma."),
+    strict: bool = typer.Option(True, "--strict/--no-strict", help="Denetim hatalarında bölümü atla."),
+    workspace: Path | None = typer.Option(None, help="Bölüm klasörlerinin kökü."),
+) -> None:
+    """Birden fazla bölümü tek komutta üretir.
+
+    Bir bölüm başarısız olursa diğerleri devam eder; özet sonunda raporlanır.
+    Yarıda kalan bir çalıştırmayı 'spacekids batch --retry' ile tamamlarsın.
+    """
+    settings = _settings(offline=offline, languages=languages, workspace=workspace)
+    pipeline = Pipeline(settings)
+    selected = [lang.strip() for lang in languages.split(",")] if languages else None
+    topic_ids = (
+        [part.strip() for part in topics_option.split(",") if part.strip()]
+        if topics_option
+        else None
+    )
+
+    if retry:
+        pending = pipeline.pending_episodes(selected)
+        if not pending:
+            typer.secho("✅ Yarım kalan bölüm yok.", fg=typer.colors.GREEN)
+            return
+        typer.secho(f"🔁 {len(pending)} yarım bölüm tamamlanacak: {', '.join(pending)}\n", bold=True)
+    else:
+        typer.secho(f"🎬 {count} bölüm üretilecek\n", bold=True)
+
+    def progress(status: str, label: str) -> None:
+        if status == "start":
+            typer.echo(f"  ▶ {label} …")
+        elif status == "ok":
+            typer.secho(f"  ✅ {label}", fg=typer.colors.GREEN)
+        else:
+            typer.secho(f"  ❌ {label}", fg=typer.colors.RED)
+
+    result = pipeline.run_batch(
+        count=count,
+        topic_ids=topic_ids,
+        languages=selected,
+        strict=strict,
+        retry_pending=retry,
+        on_progress=progress,
+    )
+
+    if not result.entries:
+        typer.secho(
+            "\nÜretilecek bölüm bulunamadı. Kütüphanedeki tüm konular kullanılmış "
+            "olabilir — config/topics.yaml'a yeni konu ekle.",
+            fg=typer.colors.YELLOW,
+        )
+        return
+
+    typer.secho(f"\n📊 Özet: {result.summary()}", bold=True)
+    for entry in result.entries:
+        if entry.status == "ok":
+            typer.echo(
+                f"   {entry.episode_id:8s} {entry.topic_id:16s} "
+                f"{_format_duration(entry.video_seconds)} video "
+                f"({', '.join(entry.languages)}) — {entry.elapsed:.0f} sn'de"
+            )
+        else:
+            typer.secho(
+                f"   {entry.episode_id or '?':8s} {entry.topic_id:16s} HATA: {entry.error}",
+                fg=typer.colors.RED,
+            )
+
+    typer.echo(
+        f"\n   toplam {_format_duration(result.total_video_seconds)} video, "
+        f"{_format_duration(result.total_elapsed)} sürede üretildi"
+    )
+
+    if result.topics_exhausted:
+        typer.secho(
+            f"\n⚠️  {result.topics_exhausted} bölüm üretilemedi: kütüphanede yeterli "
+            "kullanılmamış konu yok. config/topics.yaml'a yeni konu ekle.",
+            fg=typer.colors.YELLOW,
+        )
+
+    if result.failed:
+        typer.secho(
+            "\n   Başarısızları tamamlamak için: spacekids batch --retry",
+            fg=typer.colors.YELLOW,
+        )
+        raise typer.Exit(code=1)
+
+
 @app.command("providers")
 def list_clip_providers() -> None:
     """AI klip sağlayıcılarını ve ücretsiz kullanım notlarını listeler."""

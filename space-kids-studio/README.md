@@ -41,6 +41,7 @@ seslendirme ücretsiz Edge TTS ile yapılır.
 | `spacekids check ep-001` | Yaşa uygunluk denetimi çalıştırır |
 | `spacekids render ep-001` | Ses + görsel + video + altyazı + kapak |
 | `spacekids run --topic mars` | Hepsini sırayla |
+| `spacekids batch --count 5` | Tek komutta 5 bölüm üretir |
 | `spacekids clips ep-001` | Yıldız sahneler için AI klibi üretir |
 | `spacekids providers` | AI klip sağlayıcılarını listeler |
 | `spacekids info ep-001` | Bölümün mevcut durumu |
@@ -52,6 +53,41 @@ Yararlı bayraklar:
 - `--llm` — senaryoyu şablon yerine Claude ile yaz
 - `--no-strict` — denetim hatalarına rağmen render et
 - `--overwrite` — var olan senaryonun üzerine yaz
+
+---
+
+## Toplu üretim
+
+Bir kanalın en çok ihtiyaç duyduğu şey içerik hacmi. `batch` kullanılmamış
+konuları sırayla alır ve hepsini üretir:
+
+```bash
+spacekids batch --count 5                 # 5 bölüm, TR + EN
+spacekids batch --topics mars,the-moon    # belirli konular, sırayla
+spacekids batch --retry                   # yarım kalanları tamamla
+```
+
+**Hata toleranslı.** Bir bölüm denetimden kalırsa ya da render'da patlarsa
+diğerleri devam eder; hata sonunda özetlenir. Gece boyu süren beş bölümlük bir
+işin üçüncüde durup kalması, tek bozuk konudan çok daha pahalıya mal olur.
+
+```
+📊 Özet: 4 başarılı, 1 başarısız
+   ep-001   saturn-rings     55 sn video (tr, en) — 41 sn'de
+   ep-002   mars             54 sn video (tr, en) — 40 sn'de
+   ...
+   ep-005   milky-way        HATA: Güvenlik denetimi başarısız (1 hata)
+
+   toplam 7 dk 12 sn video, 2 dk 44 sn sürede üretildi
+
+   Başarısızları tamamlamak için: spacekids batch --retry
+```
+
+Başarısızlık varsa **çıkış kodu 1** olur — cron ya da CI bunu fark edebilir.
+Konu seçimi rastgele değil kütüphane sırasına göredir: aynı komutun ne
+üreteceğini önceden bilmek, gece çalışan bir işte rastgelelikten daha değerli.
+
+Kütüphanede yeterli kullanılmamış konu yoksa sessizce az üretmez, söyler.
 
 ---
 
@@ -303,7 +339,7 @@ ayarlaman yeterli; seslendirme katmanı bunu güven deposuna ekler.
 ## Testler
 
 ```bash
-.venv/bin/python -m pytest              # 202 test, ~10 saniye
+.venv/bin/python -m pytest              # 226 test, ~35 saniye
 .venv/bin/python -m pytest -m "not slow"  # ffmpeg render'larını atla
 .venv/bin/python -m pytest --cov=spacekids
 ```
@@ -327,8 +363,7 @@ Beş klip profilinin her biri kendi yanıt yapısıyla ayrı ayrı doğrulanır.
 ## Sonraki adımlar
 
 1. YouTube Data API ile taslak yükleme (OAuth)
-2. Toplu bölüm üretimi (bir komutta N bölüm)
-3. Klip profillerinin canlı anahtarla doğrulanması (`verified: true` işaretlemesi)
+2. Klip profillerinin canlı anahtarla doğrulanması (`verified: true` işaretlemesi)
 4. Web arayüzü — çekirdek mantık zaten arayüzden bağımsız
 
 ---

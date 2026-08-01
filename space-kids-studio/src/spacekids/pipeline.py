@@ -12,6 +12,8 @@ seslendirme) tekrarlanmaz.
 from __future__ import annotations
 
 import logging
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -56,6 +58,52 @@ class RenderResult:
     ai_clip_scenes: list[str] = field(default_factory=list)
     #: Elle konmuş klibin kullanıldığı sahneler (clips/<sahne>.mp4).
     manual_clip_scenes: list[str] = field(default_factory=list)
+
+
+@dataclass
+class BatchEntry:
+    """Toplu üretimde tek bir bölümün sonucu."""
+
+    episode_id: str
+    topic_id: str
+    status: str  # "ok" | "failed"
+    elapsed: float
+    languages: list[str] = field(default_factory=list)
+    #: Üretilen videonun toplam süresi (tüm diller birlikte).
+    video_seconds: float = 0.0
+    error: str | None = None
+
+
+@dataclass
+class BatchResult:
+    """Toplu üretimin özeti."""
+
+    entries: list[BatchEntry] = field(default_factory=list)
+    #: Kütüphanede yeterli kullanılmamış konu kalmadıysa, eksik kalan sayı.
+    topics_exhausted: int = 0
+
+    @property
+    def succeeded(self) -> list[BatchEntry]:
+        return [entry for entry in self.entries if entry.status == "ok"]
+
+    @property
+    def failed(self) -> list[BatchEntry]:
+        return [entry for entry in self.entries if entry.status == "failed"]
+
+    @property
+    def ok(self) -> bool:
+        return not self.failed
+
+    @property
+    def total_video_seconds(self) -> float:
+        return sum(entry.video_seconds for entry in self.entries)
+
+    @property
+    def total_elapsed(self) -> float:
+        return sum(entry.elapsed for entry in self.entries)
+
+    def summary(self) -> str:
+        return f"{len(self.succeeded)} başarılı, {len(self.failed)} başarısız"
 
 
 def build_providers(
@@ -318,3 +366,115 @@ class Pipeline:
         topic = self.resolve_topic(topic_id)
         episode = self.create_script(topic, episode_id, overwrite=overwrite)
         return self.render(episode, languages=languages, strict=strict)
+
+    # --- toplu üretim ----------------------------------------------------
+
+    def pending_episodes(self, languages: list[str] | None = None) -> list[str]:
+        """Senaryosu olan ama videosu tamamlanmamış bölümleri listeler.
+
+        Gece boyu süren bir toplu üretimde bir bölüm hata alırsa, sonraki
+        çalıştırmada baştan başlamak yerine yalnızca eksikleri tamamlamak
+        isteriz.
+        """
+        root = Path(self.settings.workspace)
+        if not root.is_dir():
+            return []
+
+        pending: list[str] = []
+        for child in sorted(root.iterdir()):
+            if not child.is_dir():
+                continue
+            workspace = EpisodeWorkspace(root, child.name)
+            if not workspace.exists():
+                continue
+            try:
+                episode = workspace.load_episode()
+            except Exception:
+                continue
+            targets = languages or episode.languages
+            if any(not workspace.video_path(lang).is_file() for lang in targets):
+                pending.append(child.name)
+        return pending
+
+    def select_batch_topics(self, count: int, topic_ids: list[str] | None = None) -> list[Topic]:
+        """Toplu üretim için konu seçer.
+
+        Açık liste verilmediyse **kütüphane sırasına göre** kullanılmamış
+        konular seçilir. Sıra rastgele değil: aynı komutu tekrar çalıştırdığında
+        ne olacağını tahmin edebilmek, gece çalışan bir işte rastgelelikten
+        daha değerli.
+        """
+        library = load_topics(self.settings.topics_file)
+        if topic_ids:
+            return [library.get(topic_id) for topic_id in topic_ids]
+
+        used = self._used_topic_ids()
+        available = [topic for topic in library.topics if topic.id not in used]
+        return available[:count]
+
+    def run_batch(
+        self,
+        *,
+        count: int = 1,
+        topic_ids: list[str] | None = None,
+        languages: list[str] | None = None,
+        strict: bool = True,
+        retry_pending: bool = False,
+        on_progress: Callable[[str, str], None] | None = None,
+    ) -> BatchResult:
+        """Birden fazla bölümü sırayla üretir.
+
+        **Hata toleranslı**: bir bölüm başarısız olursa diğerleri devam eder ve
+        hata özette raporlanır. Beş bölümlük bir gece işinin üçüncüde durup
+        kalması, tek bir bozuk konudan çok daha pahalıya mal olur.
+        """
+        result = BatchResult()
+
+        if retry_pending:
+            targets: list[tuple[str, str | None]] = [
+                (episode_id, None) for episode_id in self.pending_episodes(languages)
+            ]
+        else:
+            topics = self.select_batch_topics(count, topic_ids)
+            if not topic_ids and len(topics) < count:
+                result.topics_exhausted = count - len(topics)
+            targets = [(None, topic.id) for topic in topics]
+
+        for episode_id, topic_id in targets:
+            started = time.monotonic()
+            label = episode_id or topic_id or "?"
+            if on_progress:
+                on_progress("start", label)
+
+            entry = BatchEntry(
+                episode_id=episode_id or "",
+                topic_id=topic_id or "",
+                status="failed",
+                elapsed=0.0,
+            )
+            try:
+                if episode_id:
+                    episode = self.workspace(episode_id).load_episode()
+                else:
+                    topic = self.select_batch_topics(1, [topic_id])[0]
+                    episode = self.create_script(topic)
+
+                entry.episode_id = episode.id
+                entry.topic_id = episode.topic_id
+
+                render = self.render(episode, languages=languages, strict=strict)
+                entry.status = "ok"
+                entry.languages = sorted(render.manifests)
+                entry.video_seconds = sum(
+                    manifest.duration for manifest in render.manifests.values()
+                )
+            except Exception as error:
+                entry.error = str(error)
+                logger.warning("Bölüm üretilemedi (%s): %s", label, error)
+
+            entry.elapsed = time.monotonic() - started
+            result.entries.append(entry)
+            if on_progress:
+                on_progress(entry.status, entry.episode_id or label)
+
+        return result

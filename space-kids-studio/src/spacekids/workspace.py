@@ -115,9 +115,18 @@ class EpisodeWorkspace:
             raise FileNotFoundError(
                 f"{self.episode_id} için senaryo bulunamadı. Önce 'spacekids script' çalıştır."
             )
-        return Episode.model_validate_json(
+        episode = Episode.model_validate_json(
             self.episode_file.read_text(encoding="utf-8")
         )
+        if episode.id != self.episode_id:
+            # Klasör adı adrestir; render çıktıyı `episode.id` klasörüne yazar.
+            # Sessiz kalırsak, kopyalanmış bir bölüm kaynağının çıktısını ezerdi.
+            raise ValueError(
+                f"{self.episode_file} içindeki id ('{episode.id}') klasör adıyla "
+                f"('{self.episode_id}') uyuşmuyor. Klasörü yeniden adlandır ya da "
+                f"dosyadaki \"id\" alanını '{self.episode_id}' yap."
+            )
+        return episode
 
     def save_manifest(self, manifest: RenderManifest) -> Path:
         self.out_dir.mkdir(parents=True, exist_ok=True)
