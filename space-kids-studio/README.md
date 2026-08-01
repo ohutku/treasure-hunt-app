@@ -44,6 +44,7 @@ seslendirme ücretsiz Edge TTS ile yapılır.
 | `spacekids batch --count 5` | Tek komutta 5 bölüm üretir |
 | `spacekids clips ep-001` | Yıldız sahneler için AI klibi üretir |
 | `spacekids providers` | AI klip sağlayıcılarını listeler |
+| `spacekids upload ep-001` | YouTube'a **gizli** olarak yükler |
 | `spacekids info ep-001` | Bölümün mevcut durumu |
 
 Yararlı bayraklar:
@@ -123,6 +124,63 @@ episodes/ep-001/
 
 Her adım **idempotent**: çıktısı zaten varsa yeniden üretmez. Yarıda kalan bir render
 aynı komutla kaldığı yerden devam eder — pahalı adımlar (AI klip, seslendirme) tekrarlanmaz.
+
+---
+
+## YouTube'a yükleme
+
+Her dil **ayrı bir video** olarak gider: video, kapak görseli, altyazı ve
+`metadata.<dil>.json` içindeki başlık/açıklama/etiketler.
+
+```bash
+pip install -e ".[youtube]"
+
+spacekids upload ep-001 --dry-run      # ne yükleneceğini gör, ağa çıkmaz
+spacekids upload ep-001                # gizli olarak yükle
+spacekids upload ep-001 --languages tr # sadece Türkçe
+```
+
+**Videolar varsayılan olarak gizli yüklenir.** Yükleme geri alması zor,
+dışarıya açılan bir işlem ve söz konusu olan çocuk içeriği. `--privacy public`
+istersen ayrıca onay sorar. Studio'da izleyip onayladıktan sonra yayına al.
+
+### Bir kerelik kurulum (OAuth)
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → yeni proje oluştur
+2. **APIs & Services → Library** → "YouTube Data API v3" → **Enable**
+3. **APIs & Services → OAuth consent screen** → External → uygulama adı, destek
+   e-postası → **Scopes** adımında bir şey eklemene gerek yok → **Test users**
+   bölümüne kendi Google hesabını ekle
+4. **Credentials → Create Credentials → OAuth client ID** → tür: **Desktop app**
+   → JSON'u indir
+5. İlk çalıştırmada tarayıcı açılır, hesabını seçersin:
+
+```bash
+spacekids upload ep-001 --client-secrets ~/indirilenler/client_secret.json
+```
+
+Jeton `~/.config/spacekids/youtube-token.json` altına `600` izniyle kaydedilir;
+sonraki yüklemelerde `--client-secrets` gerekmez.
+
+### Bilmen gereken sınırlar
+
+| Konu | Durum |
+|---|---|
+| **Doğrulanmamış uygulama** | Uygulaman Google tarafından doğrulanana kadar yüklenen videolar **kilitli gizli** kalır — yayına alamazsın. Kendi kanalın için test kullanıcısı olarak eklenmen genelde yeterli; kalıcı çözüm doğrulama başvurusu. |
+| **Kota** | `videos.insert` Aralık 2025'te ayrı bir "Video Uploads" kovasına taşındı: günde ~100 yükleme. Diğer çağrılar 10.000 birimlik havuzdan. |
+| **Özel kapak görseli** | Kanalının **doğrulanmış** olmasını gerektirir. Değilse video yüklenir, kapak atlanır ve uyarı basılır. |
+| **Altyazı** | `youtube.force-ssl` kapsamı gerekir; kod bunu zaten istiyor. |
+
+Kapak veya altyazı adımı başarısız olursa **video yine yüklenmiş olur** —
+bunlar ikincil adımlar olarak ele alınır ve hata değil uyarı üretir.
+
+### Çocuklara yönelik işaretleme
+
+API'de yazılabilir alan `status.selfDeclaredMadeForKids`'tir;
+`status.madeForKids` **salt okunurdur** ve ona yazmaya çalışmak sessizce yok
+sayılır. Bizim metadata dosyamız anlamsal olarak `madeForKids` tutar, yükleme
+sırasında doğru alana eşlenir. Bu eşleme testle korunuyor — sessiz başarısızlık
+tam da burada olurdu.
 
 ---
 
@@ -339,7 +397,7 @@ ayarlaman yeterli; seslendirme katmanı bunu güven deposuna ekler.
 ## Testler
 
 ```bash
-.venv/bin/python -m pytest              # 226 test, ~35 saniye
+.venv/bin/python -m pytest              # 249 test, ~35 saniye
 .venv/bin/python -m pytest -m "not slow"  # ffmpeg render'larını atla
 .venv/bin/python -m pytest --cov=spacekids
 ```
@@ -356,14 +414,11 @@ Beş klip profilinin her biri kendi yanıt yapısıyla ayrı ayrı doğrulanır.
   bu bir tercih değil, gereklilik.
 - **Made-for-kids videolarda kişiselleştirilmiş reklam kapalıdır** — RPM belirgin
   şekilde düşüktür. Bu sistem hız kazandırır, gelir garanti etmez.
-- **YouTube'a otomatik yükleme henüz yok** — metadata paketi hazır, yükleme adımı
-  sonraki fazda.
 - **ffmpeg gerekmiyor**: `imageio-ffmpeg` paketiyle gelen statik binary kullanılır.
 
 ## Sonraki adımlar
 
-1. YouTube Data API ile taslak yükleme (OAuth)
-2. Klip profillerinin canlı anahtarla doğrulanması (`verified: true` işaretlemesi)
+1. Klip profillerinin canlı anahtarla doğrulanması (`verified: true` işaretlemesi)
 4. Web arayüzü — çekirdek mantık zaten arayüzden bağımsız
 
 ---

@@ -427,6 +427,131 @@ def generate_clips(
         typer.echo("\nKliplerı gözden geçir, sonra: spacekids render " + episode)
 
 
+@app.command("upload")
+def upload_episode(
+    episode: str = typer.Argument(..., help="Bölüm kimliği."),
+    languages: str | None = typer.Option(None, help="Yüklenecek diller. Boşsa hepsi."),
+    privacy: str = typer.Option(
+        "private", help="private | unlisted | public. Varsayılan gizli."
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Ağa çıkma, yüklenecekleri göster."),
+    client_secrets: Path | None = typer.Option(
+        None, help="Google OAuth istemci JSON dosyası (Desktop app)."
+    ),
+    token_file: Path | None = typer.Option(
+        None, help="Kayıtlı OAuth jetonu (varsayılan: ~/.config/spacekids/youtube-token.json)."
+    ),
+    no_thumbnail: bool = typer.Option(False, "--no-thumbnail", help="Kapak görselini yükleme."),
+    no_captions: bool = typer.Option(False, "--no-captions", help="Altyazıyı yükleme."),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Gizli olmayan yüklemeyi onayla."),
+    workspace: Path | None = typer.Option(None, help="Bölüm klasörlerinin kökü."),
+) -> None:
+    """Bölümü YouTube'a yükler — her dil ayrı bir video olarak.
+
+    Videolar varsayılan olarak **gizli** yüklenir. YouTube Studio'da izleyip
+    onayladıktan sonra yayına almanı öneririm.
+    """
+    from .publish.youtube import (
+        ALLOWED_PRIVACY,
+        YouTubeError,
+        YouTubeUploader,
+        build_upload_plan,
+    )
+
+    settings = _settings(workspace=workspace)
+    space = EpisodeWorkspace(settings.workspace, episode)
+    loaded = space.load_episode()
+    targets = (
+        [lang.strip() for lang in languages.split(",") if lang.strip()]
+        if languages
+        else loaded.languages
+    )
+
+    if privacy not in ALLOWED_PRIVACY:
+        typer.secho(
+            f"❌ Geçersiz gizlilik: {privacy!r}. İzin verilenler: {', '.join(ALLOWED_PRIVACY)}",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        plans = [
+            build_upload_plan(
+                space,
+                language,
+                privacy=privacy,
+                include_thumbnail=not no_thumbnail,
+                include_captions=not no_captions,
+            )
+            for language in targets
+        ]
+    except YouTubeError as error:
+        typer.secho(f"❌ {error}", fg=typer.colors.RED)
+        raise typer.Exit(code=1) from error
+
+    if dry_run:
+        typer.secho("🔍 Prova çalıştırması — hiçbir şey yüklenmiyor\n", bold=True)
+        for plan in plans:
+            typer.secho(f"  [{plan.language}] {plan.title}", fg=typer.colors.GREEN)
+            typer.echo(f"     video    : {plan.video_path}")
+            typer.echo(f"     süre     : {_format_duration(plan.duration_seconds)}")
+            typer.echo(f"     gizlilik : {plan.privacy}")
+            typer.echo(f"     çocuklar : selfDeclaredMadeForKids={plan.made_for_kids}")
+            typer.echo(f"     kategori : {plan.category_id}")
+            typer.echo(f"     etiketler: {', '.join(plan.tags)}")
+            typer.echo(f"     kapak    : {plan.thumbnail_path or '—'}")
+            typer.echo(f"     altyazı  : {plan.caption_path or '—'}")
+        return
+
+    if privacy != "private" and not yes:
+        typer.secho(
+            f"\n⚠️  Videolar '{privacy}' olarak yüklenecek — yani gizli değil.",
+            fg=typer.colors.YELLOW,
+        )
+        if not typer.confirm("Devam edilsin mi?"):
+            typer.echo("İptal edildi.")
+            raise typer.Exit(code=1)
+
+    token = token_file or (Path.home() / ".config" / "spacekids" / "youtube-token.json")
+    uploader = YouTubeUploader(client_secrets_file=client_secrets, token_file=token)
+
+    results = []
+    for plan in plans:
+        typer.echo(f"\n  [{plan.language}] {plan.title}")
+
+        last_percent = -1
+
+        def progress(percent: int) -> None:
+            nonlocal last_percent
+            if percent >= last_percent + 10:
+                last_percent = percent
+                typer.echo(f"     yükleniyor… %{percent}")
+
+        try:
+            result = uploader.upload(plan, on_progress=progress)
+        except YouTubeError as error:
+            typer.secho(f"     ❌ {error}", fg=typer.colors.RED)
+            raise typer.Exit(code=1) from error
+        except Exception as error:
+            typer.secho(f"     ❌ yükleme başarısız: {error}", fg=typer.colors.RED)
+            raise typer.Exit(code=1) from error
+
+        results.append(result)
+        typer.secho(f"     ✅ {result.url}", fg=typer.colors.GREEN)
+        typer.echo(
+            f"     kapak: {'✅' if result.thumbnail_set else '—'}  "
+            f"altyazı: {'✅' if result.caption_uploaded else '—'}"
+        )
+        for warning in result.warnings:
+            typer.secho(f"     ⚠️  {warning}", fg=typer.colors.YELLOW)
+
+    typer.secho(f"\n✅ {len(results)} video yüklendi.", fg=typer.colors.GREEN, bold=True)
+    if any(result.privacy == "private" for result in results):
+        typer.echo(
+            "   Videolar gizli. YouTube Studio'da izleyip onayladıktan sonra yayına al."
+        )
+
+
 @app.command("info")
 def episode_info(
     episode: str = typer.Argument(..., help="Bölüm kimliği."),

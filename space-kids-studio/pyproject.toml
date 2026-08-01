@@ -20,6 +20,11 @@ dependencies = [
 [project.optional-dependencies]
 voice = ["edge-tts>=6.1"]
 llm = ["anthropic>=0.40"]
+youtube = [
+    "google-api-python-client>=2.190",
+    "google-auth-oauthlib>=1.2",
+    "google-auth-httplib2>=0.2",
+]
 dev = ["pytest>=8.0", "pytest-cov>=5.0"]
 
 [project.scripts]

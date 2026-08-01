@@ -18,5 +18,9 @@ episodes/
 # Yerel ayarlar (API anahtarları buraya asla yazılmamalı — ortam değişkeni kullan)
 settings.toml
 
+# OAuth sırları ve jetonları — kanal erişimi verir, asla commit'lenmemeli
+client_secret*.json
+*youtube-token.json
+
 # Fon müziği gibi telifli olabilecek yerel varlıklar
 assets/music/
