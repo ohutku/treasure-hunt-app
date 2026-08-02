@@ -29,6 +29,7 @@ from .providers.images import (
 )
 from .providers.clips import ClipProvider as RemoteClipProvider
 from .providers.clips import NullClipProvider
+from .providers.nasa_video import NasaVideoProvider
 from .providers.voice import EdgeVoiceProvider, FallbackVoiceProvider, SilentVoiceProvider
 from .publish.metadata import build_youtube_metadata
 from .publish.thumbnail import build_thumbnail
@@ -125,17 +126,37 @@ def build_providers(
     images = FallbackImageProvider(NasaImageProvider(), procedural)
     voices = FallbackVoiceProvider(EdgeVoiceProvider(settings.voices), silent)
 
-    clips: ClipProvider = NullClipProvider()
-    if settings.clips.enabled and settings.clips.api_key:
+    return images, voices, build_clip_provider(settings)
+
+
+def build_clip_provider(settings: Settings) -> ClipProvider:
+    """Klip kaynağını ayarlara göre seçer.
+
+    Yanlış yapılandırma bölümü durdurmaz: klip kullanılamıyorsa sahneler
+    durağan görselle render edilir, çünkü klip daima isteğe bağlıdır.
+    """
+    if settings.offline or settings.clips.source == "none":
+        return NullClipProvider()
+
+    if settings.clips.source == "nasa":
+        return NasaVideoProvider(max_bytes=settings.clips.max_bytes)
+
+    if settings.clips.source == "ai":
+        if not (settings.clips.enabled and settings.clips.api_key):
+            logger.warning("AI klip kaynağı seçili ama anahtar yok; klip üretilmeyecek.")
+            return NullClipProvider()
         try:
-            clips = RemoteClipProvider.from_settings(
+            return RemoteClipProvider.from_settings(
                 settings.clips, settings.clip_providers_file
             )
         except (KeyError, FileNotFoundError, ValueError) as error:
-            # Yanlış yapılandırılmış bir klip sağlayıcısı bölümü durdurmamalı.
             logger.warning("AI klip sağlayıcısı kurulamadı, devre dışı: %s", error)
+            return NullClipProvider()
 
-    return images, voices, clips
+    logger.warning(
+        "Bilinmeyen klip kaynağı %r; klip üretilmeyecek.", settings.clips.source
+    )
+    return NullClipProvider()
 
 
 class Pipeline:

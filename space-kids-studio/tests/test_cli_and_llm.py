@@ -101,7 +101,9 @@ def test_providers_komutu_saglayicilari_listeler():
 
 def test_clips_dry_run_aga_cikmadan_istegi_gosterir(tmp_path, episode):
     EpisodeWorkspace(tmp_path, episode.id).save_episode(episode)
-    result = _run("clips", episode.id, "--dry-run", "--workspace", str(tmp_path))
+    result = _run(
+        "clips", episode.id, "--source", "ai", "--dry-run", "--workspace", str(tmp_path)
+    )
 
     assert result.exit_code == 0
     assert "Prova çalıştırması" in result.stdout
@@ -113,7 +115,8 @@ def test_clips_dry_run_aga_cikmadan_istegi_gosterir(tmp_path, episode):
 def test_clips_dry_run_saglayici_secimine_uyar(tmp_path, episode):
     EpisodeWorkspace(tmp_path, episode.id).save_episode(episode)
     result = _run(
-        "clips", episode.id, "--dry-run", "--provider", "fal", "--workspace", str(tmp_path)
+        "clips", episode.id, "--source", "ai", "--dry-run", "--provider", "fal",
+        "--workspace", str(tmp_path),
     )
     assert result.exit_code == 0
     assert "fal" in result.stdout
@@ -122,7 +125,8 @@ def test_clips_dry_run_saglayici_secimine_uyar(tmp_path, episode):
 def test_clips_bilinmeyen_saglayicida_hata_verir(tmp_path, episode):
     EpisodeWorkspace(tmp_path, episode.id).save_episode(episode)
     result = _run(
-        "clips", episode.id, "--provider", "yok-boyle", "--workspace", str(tmp_path)
+        "clips", episode.id, "--source", "ai", "--provider", "yok-boyle",
+        "--workspace", str(tmp_path),
     )
     assert result.exit_code == 1
     assert "bulunamadı" in result.stdout
@@ -133,7 +137,7 @@ def test_clips_anahtarsiz_calistirma_yol_gosterir(tmp_path, episode, monkeypatch
         monkeypatch.delenv(var, raising=False)
     EpisodeWorkspace(tmp_path, episode.id).save_episode(episode)
 
-    result = _run("clips", episode.id, "--workspace", str(tmp_path))
+    result = _run("clips", episode.id, "--source", "ai", "--workspace", str(tmp_path))
     assert result.exit_code == 1
     assert "SEEDANCE_API_KEY" in result.stdout
 
@@ -144,13 +148,18 @@ def test_clips_hero_sahnesi_yoksa_bilgilendirir(tmp_path, episode):
         scene.visual.clip_prompt = None
     EpisodeWorkspace(tmp_path, episode.id).save_episode(episode)
 
-    result = _run("clips", episode.id, "--workspace", str(tmp_path))
+    result = _run("clips", episode.id, "--source", "ai", "--workspace", str(tmp_path))
     assert result.exit_code == 0
     assert "hero" in result.stdout
 
 
 @pytest.mark.slow
-def test_render_komutu_video_uretir(tmp_path, episode):
+def test_render_komutu_video_uretir(tmp_path, episode, monkeypatch):
+    config = tmp_path / "settings.toml"
+    config.write_text(
+        "[video]\nwidth = 320\nheight = 180\nfps = 10\n", encoding="utf-8"
+    )
+    monkeypatch.setenv("SPACEKIDS_CONFIG", str(config))
     EpisodeWorkspace(tmp_path, episode.id).save_episode(episode)
 
     result = _run(

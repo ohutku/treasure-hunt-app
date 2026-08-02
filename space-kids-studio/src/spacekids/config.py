@@ -53,8 +53,16 @@ class ClipSettings(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    #: Kliplerin nereden geleceği:
+    #:   "none" — klip kullanma (varsayılan); sahneler durağan görsel + Ken Burns
+    #:   "nasa" — NASA arşivinden kamu malı görüntü (bedava, anahtarsız)
+    #:   "ai"   — Seedance vb. ile üret (anahtar ve bütçe gerektirir)
+    source: str = "none"
+    #: Arşiv klipleri için indirilecek azami dosya boyutu (bayt).
+    max_bytes: int = 200 * 1024 * 1024
+
     enabled: bool = False
-    #: config/clip_providers.yaml içindeki profil kimliği.
+    #: config/clip_providers.yaml içindeki profil kimliği (source="ai" iken).
     provider: str = "byteplus"
     #: Boş bırakılırsa profilin varsayılan modeli kullanılır.
     model: str = ""
@@ -106,7 +114,13 @@ class Settings(BaseModel):
         """Ayarları TOML + ortam değişkenleri + doğrudan geçilen değerlerle kurar."""
         data: dict[str, object] = {}
 
-        candidate = config_file or (PROJECT_ROOT / "settings.toml")
+        # Öncelik: doğrudan verilen yol > SPACEKIDS_CONFIG > proje kökündeki dosya.
+        env_config = os.environ.get("SPACEKIDS_CONFIG")
+        candidate = (
+            config_file
+            or (Path(env_config) if env_config else None)
+            or (PROJECT_ROOT / "settings.toml")
+        )
         if candidate.is_file():
             with candidate.open("rb") as handle:
                 data.update(tomllib.load(handle))
@@ -129,9 +143,13 @@ class Settings(BaseModel):
         if clip_key:
             clips["api_key"] = clip_key
             clips.setdefault("enabled", True)
+            clips.setdefault("source", "ai")
         clip_provider = os.environ.get("SPACEKIDS_CLIP_PROVIDER")
         if clip_provider:
             clips["provider"] = clip_provider
+        clip_source = os.environ.get("SPACEKIDS_CLIP_SOURCE")
+        if clip_source:
+            clips["source"] = clip_source
         if clips:
             data["clips"] = clips
 

@@ -42,7 +42,7 @@ seslendirme ücretsiz Edge TTS ile yapılır.
 | `spacekids render ep-001` | Ses + görsel + video + altyazı + kapak |
 | `spacekids run --topic mars` | Hepsini sırayla |
 | `spacekids batch --count 5` | Tek komutta 5 bölüm üretir |
-| `spacekids clips ep-001` | Yıldız sahneler için AI klibi üretir |
+| `spacekids clips ep-001` | NASA arşivinden sahne klipleri indirir |
 | `spacekids providers` | AI klip sağlayıcılarını listeler |
 | `spacekids upload ep-001` | YouTube'a **gizli** olarak yükler |
 | `spacekids info ep-001` | Bölümün mevcut durumu |
@@ -218,10 +218,50 @@ otomatik olarak yedeğe düşülür — **ağ sorunu pipeline'ı asla durdurmaz.
 |---|---|---|
 | Görsel | NASA Image Library (kamu malı, anahtarsız) | Prosedürel yıldız alanı (Pillow) |
 | Ses | Edge TTS (ücretsiz, TR + EN) | Tahmini süre kadar sessizlik |
+| Klip | NASA arşiv videosu (kamu malı) | Yok — durağan görsele düşer |
 | Senaryo | Claude (`--llm`) | Bilgi kartlarından şablon |
 | AI klip | Seedance (kota + istem süzgeci) | Yok — durağan görsele düşer |
 
-## AI klipleri (Seedance)
+## Video klipleri
+
+Sahneler varsayılan olarak durağan görsel + Ken Burns hareketiyle render edilir.
+İstersen sahnelere gerçek video kliplerini koyabilirsin — iki kaynak var:
+
+| Kaynak | Maliyet | Telif riski | Anahtar |
+|---|---|---|---|
+| **`nasa`** (önerilen) | **Bedava, sınırsız** | Yok — kamu malı | Gerekmez |
+| `ai` (Seedance vb.) | Klip başına ücret | ⚠️ Var (aşağıda) | Gerekir |
+
+### NASA arşivi — bedava yol
+
+Görsellerle aynı API, tek fark `media_type=video`. Arşiv **CC0 1.0 (kamu malı)**:
+ticari kullanım serbest, atıf gerekmiyor, filigran yok, kota yok.
+
+```bash
+spacekids clips ep-001 --dry-run   # arşivi ara, ne bulunduğunu göster (indirmez)
+spacekids clips ep-001             # klipleri indir
+spacekids render ep-001            # videoya al
+```
+
+`--dry-run` her sahne için bulunan klibin **başlığını ve açıklamasını** basar.
+Bu adımı atlama: bir uzay sorgusu bazen basın toplantısı görüntüsü de
+döndürebiliyor ve çocuk içeriğinde bunu yayına almak istemezsin.
+
+Beğenmediğin bir klibi `clips/` klasöründen silmen yeterli — o sahne durağan
+görsele geri döner.
+
+Tüm hattı arşiv kliplerine geçirmek için:
+
+```bash
+export SPACEKIDS_CLIP_SOURCE=nasa
+spacekids batch --count 5
+```
+
+**Korumalar:** 200 MB üzeri dosyalar atlanır (arşivde GB'larca yayın masteri var),
+eşleşme bulunamayan sahne durağan görselle render edilir, klibin kendi sesi yok
+sayılır — ses daima bizim anlatımımızdır.
+
+### AI klipleri (Seedance)
 
 Seedance klip başına **5-10 saniye** üretir. 5 dakikalık bir bölüm 30-60 klip demek —
 ne ücretsiz kotaya sığar ne de bütçeye. Bu yüzden sistem hibrit çalışır:
@@ -378,6 +418,8 @@ music_path = "assets/music/ambient.mp3"   # opsiyonel fon müziği
 music_volume = 0.12
 
 [clips]
+source = "none"              # none | nasa | ai
+max_bytes = 209715200        # arşiv klipleri için üst sınır (200 MB)
 enabled = false
 provider = "byteplus"        # bkz. config/clip_providers.yaml
 model = ""                   # boşsa profilin varsayılanı
@@ -389,6 +431,8 @@ resolution = "720p"
 **API anahtarları yalnızca ortam değişkenlerinden okunur** (`ANTHROPIC_API_KEY`,
 `SEEDANCE_API_KEY` / `SPACEKIDS_CLIP_API_KEY`) — kazara commit'lenmesin diye TOML'dan anahtar okunmuyor.
 
+Yapılandırma dosyasının yolu `SPACEKIDS_CONFIG` ile değiştirilebilir.
+
 Kurumsal TLS proxy'si arkasındaysan `SSL_CERT_FILE` (veya `SPACEKIDS_CA_BUNDLE`)
 ayarlaman yeterli; seslendirme katmanı bunu güven deposuna ekler.
 
@@ -397,7 +441,7 @@ ayarlaman yeterli; seslendirme katmanı bunu güven deposuna ekler.
 ## Testler
 
 ```bash
-.venv/bin/python -m pytest              # 249 test, ~35 saniye
+.venv/bin/python -m pytest              # 281 test, ~18 saniye
 .venv/bin/python -m pytest -m "not slow"  # ffmpeg render'larını atla
 .venv/bin/python -m pytest --cov=spacekids
 ```

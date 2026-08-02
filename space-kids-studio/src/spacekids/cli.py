@@ -336,22 +336,40 @@ def list_clip_providers() -> None:
 @app.command("clips")
 def generate_clips(
     episode: str = typer.Argument(..., help="Bölüm kimliği."),
-    provider: str | None = typer.Option(None, help="Klip sağlayıcısı (bkz. 'spacekids providers')."),
+    source: str = typer.Option(
+        "nasa", "--source", help="Klip kaynağı: nasa (bedava arşiv) veya ai (üretim)."
+    ),
+    provider: str | None = typer.Option(None, help="AI sağlayıcısı (bkz. 'spacekids providers')."),
     model: str | None = typer.Option(None, help="Model kimliğini geçersiz kıl."),
     limit: int | None = typer.Option(None, help="Bu çalıştırmada üretilecek azami klip."),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Ağa çıkma, gönderilecek isteği göster."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="İndirme/üretme yapma, ne bulunduğunu göster."),
     workspace: Path | None = typer.Option(None, help="Bölüm klasörlerinin kökü."),
 ) -> None:
-    """Bölümün yıldız sahneleri için AI video klipleri üretir.
+    """Bölüm sahneleri için video klipleri getirir.
 
-    Klipler render'dan bağımsız üretilebilir: önce burada üretip gözle kontrol
-    eder, beğenirsen 'render' ile videoya alırsın.
+    Varsayılan kaynak **NASA arşivi**: kamu malı, bedava, anahtarsız ve
+    telifli karakter riski yok. `--source ai` ile Seedance vb. kullanılır.
+
+    Klipler render'dan bağımsız getirilebilir: önce burada indirip gözle
+    kontrol eder, beğenirsen 'render' ile videoya alırsın.
     """
     from .providers.clip_profiles import load_clip_providers
     from .providers.clip_safety import ClipPromptRejected
     from .providers.clips import ClipProvider as RemoteClipProvider
 
     settings = _settings(workspace=workspace)
+    space = EpisodeWorkspace(settings.workspace, episode)
+    loaded = space.load_episode()
+
+    if source == "nasa":
+        _nasa_clips(settings, space, loaded, dry_run=dry_run, limit=limit)
+        return
+    if source != "ai":
+        typer.secho(
+            f"❌ Bilinmeyen kaynak: {source!r}. Seçenekler: nasa, ai", fg=typer.colors.RED
+        )
+        raise typer.Exit(code=1)
+
     if provider:
         settings.clips.provider = provider
     if model:
@@ -359,8 +377,6 @@ def generate_clips(
     if limit is not None:
         settings.clips.max_clips_per_episode = limit
 
-    space = EpisodeWorkspace(settings.workspace, episode)
-    loaded = space.load_episode()
     hero_scenes = loaded.hero_scenes()
 
     if not hero_scenes:
@@ -425,6 +441,64 @@ def generate_clips(
         typer.secho(f"  ⚠️  {reason}", fg=typer.colors.YELLOW)
     if produced:
         typer.echo("\nKliplerı gözden geçir, sonra: spacekids render " + episode)
+
+
+def _nasa_clips(settings, space, episode, *, dry_run: bool, limit: int | None) -> None:
+    """NASA arşivinden sahne kliplerini getirir."""
+    from .providers.nasa_video import NasaVideoProvider
+
+    provider = NasaVideoProvider(max_bytes=settings.clips.max_bytes)
+    scenes = episode.scenes[:limit] if limit else episode.scenes
+
+    if dry_run:
+        typer.secho(
+            "🔍 Prova çalıştırması — arşiv aranıyor, hiçbir şey indirilmiyor\n", bold=True
+        )
+        found = 0
+        for scene in scenes:
+            candidate = provider.preview(scene)
+            if candidate is None:
+                typer.secho(
+                    f"  — {scene.id}: eşleşme yok ({', '.join(scene.visual.queries)})",
+                    fg=typer.colors.YELLOW,
+                )
+                continue
+            found += 1
+            typer.secho(f"  ✅ {scene.id} — {candidate.title}", fg=typer.colors.GREEN)
+            typer.echo(f"     sorgu : {candidate.query}")
+            typer.echo(f"     boyut : {candidate.size_label}")
+            if candidate.description:
+                typer.echo(f"     içerik: {candidate.description[:120]}")
+            typer.echo(f"     url   : {candidate.url}")
+        typer.echo(
+            f"\n  {found}/{len(scenes)} sahne için klip bulundu. "
+            "İçerikleri gözden geçir; uygunsa --dry-run olmadan çalıştır."
+        )
+        return
+
+    space.clips_dir.mkdir(parents=True, exist_ok=True)
+    produced: list[str] = []
+    for scene in scenes:
+        typer.echo(f"  {scene.id} aranıyor…")
+        path = provider.generate(scene, space.clip_path(scene.id))
+        if path:
+            produced.append(scene.id)
+            size = path.stat().st_size / 1024 / 1024
+            typer.secho(f"    ✅ {path.name} ({size:.1f} MB)", fg=typer.colors.GREEN)
+
+    typer.secho(
+        f"\n{len(produced)}/{len(scenes)} sahne için klip indirildi.", bold=True
+    )
+    for reason in provider.skipped:
+        typer.secho(f"  ⚠️  {reason}", fg=typer.colors.YELLOW)
+    if produced:
+        typer.echo(
+            "\nKlipleri izleyip uygunluğunu kontrol et, sonra: "
+            f"spacekids render {episode.id}"
+        )
+        typer.echo(
+            "  (Beğenmediğin bir klibi sil — o sahne durağan görsele geri döner.)"
+        )
 
 
 @app.command("upload")

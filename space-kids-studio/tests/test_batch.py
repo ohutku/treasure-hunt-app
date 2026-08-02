@@ -201,7 +201,15 @@ def test_yarim_kalan_yoksa_retry_bos_doner(settings):
 
 
 @pytest.mark.slow
-def test_batch_komutu_ozet_basar(tmp_path):
+def test_batch_komutu_ozet_basar(tmp_path, monkeypatch):
+    # CLI kendi ayarlarını kurar; testin dakikalarca render etmemesi için
+    # küçük çözünürlük veren bir yapılandırma dosyası gösteriyoruz.
+    config = tmp_path / "settings.toml"
+    config.write_text(
+        "[video]\nwidth = 320\nheight = 180\nfps = 10\n", encoding="utf-8"
+    )
+    monkeypatch.setenv("SPACEKIDS_CONFIG", str(config))
+
     result = runner.invoke(
         app,
         ["batch", "--count", "1", "--languages", "tr", "--offline", "--workspace", str(tmp_path)],
