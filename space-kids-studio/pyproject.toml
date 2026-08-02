@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "space-kids-studio"
+version = "0.1.0"
+description = "Çocuklar için uzay temalı, çok dilli YouTube video üretim hattı"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.6",
+    "typer>=0.12",
+    "PyYAML>=6.0",
+    "httpx>=0.27",
+    "Pillow>=10.2",
+    "imageio-ffmpeg>=0.5",
+]
+
+[project.optional-dependencies]
+voice = ["edge-tts>=6.1"]
+llm = ["anthropic>=0.40"]
+youtube = [
+    "google-api-python-client>=2.190",
+    "google-auth-oauthlib>=1.2",
+    "google-auth-httplib2>=0.2",
+]
+dev = ["pytest>=8.0", "pytest-cov>=5.0"]
+
+[project.scripts]
+spacekids = "spacekids.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: gerçek ffmpeg render'ı gibi yavaş testler",
+    "network: dış servise erişim gerektiren testler",
+]
+filterwarnings = ["ignore::DeprecationWarning"]

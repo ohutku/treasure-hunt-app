@@ -1,0 +1,305 @@
+# Konu kütüphanesi.
+#
+# Buradaki her konu bir bölüme dönüşür. `facts` listesi iki işe yarar:
+#   1. API anahtarı yokken şablon üreteci doğrudan bu bilgilerden senaryo kurar,
+#      yani sistem internetsiz de anlamlı bir video üretir.
+#   2. API varken bu bilgiler LLM'e "doğruluk çıpası" olarak verilir, böylece
+#      model uydurma bilgi üretmez.
+#
+# `visual` alanı NASA arşivinde aranacak İngilizce sorgudur (arşiv sadece
+# İngilizce aranabiliyor); metinler ise her dilde ayrı yazılır.
+
+version: 1
+
+defaults:
+  age_min: 4
+  age_max: 8
+
+topics:
+  - id: saturn-rings
+    emoji: "🪐"
+    title:
+      tr: "Satürn'ün Halkaları"
+      en: "Saturn's Rings"
+    hook:
+      tr: "Uzaydaki Dev Hulahop!"
+      en: "The Giant Hula Hoop in Space!"
+    hero_prompt: >-
+      A friendly cartoon rocket gliding past Saturn's glowing rings,
+      soft pastel colors, children's picture book style, gentle and wondrous
+    keywords:
+      tr: ["satürn", "gezegen", "halka", "uzay", "çocuk"]
+      en: ["saturn", "planet", "rings", "space", "kids"]
+    facts:
+      - visual: "Saturn rings Cassini"
+        motion: zoom_in
+        tr: "Satürn, Güneş'ten uzakta duran kocaman bir gezegen. Etrafında parlayan halkaları var."
+        en: "Saturn is a huge planet far from the Sun. It wears shining rings all around it."
+      - visual: "Saturn rings close up ice particles"
+        motion: zoom_out
+        tr: "O halkalar aslında taştan değil. Milyonlarca minik buz parçasından oluşuyorlar."
+        en: "Those rings are not made of stone. They are millions of tiny pieces of ice."
+      - visual: "Saturn planet size comparison"
+        motion: pan_right
+        tr: "Bazı buz parçaları toz kadar küçük. Bazıları ise bir ev kadar büyük!"
+        en: "Some ice pieces are as small as dust. Others are as big as a house!"
+      - visual: "Saturn moon Titan"
+        motion: zoom_in
+        tr: "Satürn'ün pek çok ayı var. En büyüğünün adı Titan ve sisli bir dünyası var."
+        en: "Saturn has many moons. The biggest one is called Titan and it is very foggy."
+      - visual: "Cassini spacecraft Saturn"
+        motion: pan_left
+        tr: "Cassini adlı bir uzay aracı Satürn'ü uzun yıllar ziyaret etti. Bize oradan güzel fotoğraflar gönderdi."
+        en: "A spacecraft named Cassini visited Saturn for many years and sent us photographs."
+
+  - id: mars
+    emoji: "🔴"
+    title:
+      tr: "Kızıl Gezegen Mars"
+      en: "Mars, the Red Planet"
+    hook:
+      tr: "Neden Kıpkırmızı?"
+      en: "Why Is It So Red?"
+    hero_prompt: >-
+      A cheerful cartoon rover rolling across red Martian sand under a pink sky,
+      children's picture book style, warm and friendly
+    keywords:
+      tr: ["mars", "kızıl gezegen", "keşif aracı", "uzay", "çocuk"]
+      en: ["mars", "red planet", "rover", "space", "kids"]
+    facts:
+      - visual: "Mars planet full disk"
+        motion: zoom_in
+        tr: "Mars'a Kızıl Gezegen deriz. Çünkü toprağı pas rengindedir, tıpkı turuncu bir toz gibi."
+        en: "We call Mars the Red Planet. Its soil is rusty orange, like colorful dust."
+      - visual: "Olympus Mons Mars volcano"
+        motion: zoom_out
+        tr: "Mars'ta Olympus Mons adında kocaman bir dağ var. Dünya'daki bütün dağlardan daha yüksek."
+        en: "Mars has a giant mountain called Olympus Mons. It is taller than any mountain on Earth."
+      - visual: "Mars rover Perseverance surface"
+        motion: pan_right
+        tr: "Oraya küçük keşif araçları gönderdik. Tekerlekleriyle gezip taşları inceliyorlar."
+        en: "We sent little rovers there. They drive around on wheels and study the rocks."
+      - visual: "Mars polar ice cap"
+        motion: zoom_in
+        tr: "Mars'ın kutuplarında buz var. Yani orada da kar gibi beyaz bölgeler bulunuyor."
+        en: "There is ice at the poles of Mars. So it has white areas, a bit like snow."
+      - visual: "Mars sunset Curiosity"
+        motion: pan_left
+        tr: "Mars'ta gün batımı mavi görünür. Dünya'dakinin tam tersi, ne kadar şaşırtıcı!"
+        en: "Sunsets on Mars look blue. That is the opposite of Earth, how surprising!"
+
+  - id: the-moon
+    emoji: "🌙"
+    title:
+      tr: "Ay'ı Tanıyalım"
+      en: "Meet the Moon"
+    hook:
+      tr: "Gökyüzündeki Komşumuz"
+      en: "Our Neighbour in the Sky"
+    hero_prompt: >-
+      A smiling cartoon child waving at a big friendly moon from a grassy hill at night,
+      soft pastel colors, children's picture book style
+    keywords:
+      tr: ["ay", "gece", "gökyüzü", "uzay", "çocuk"]
+      en: ["moon", "night", "sky", "space", "kids"]
+    facts:
+      - visual: "full moon high resolution"
+        motion: zoom_in
+        tr: "Ay, Dünya'nın etrafında dönen en yakın komşumuz. Geceleri bize ışık gönderir."
+        en: "The Moon is our closest neighbour, circling around Earth. It brings us light at night."
+      - visual: "moon phases diagram"
+        motion: pan_right
+        tr: "Ay her gece biraz farklı görünür. Bazen incecik bir tırnak, bazen kocaman bir tabak gibidir."
+        en: "The Moon looks different each night. Sometimes a thin sliver, sometimes a big round plate."
+      - visual: "moon craters surface detail"
+        motion: zoom_out
+        tr: "Yüzeyinde çukurlar var. Bunlara krater diyoruz ve uzaktan lekeler gibi görünürler."
+        en: "Its surface has dents we call craters. From far away they look like soft grey spots."
+      - visual: "Apollo astronaut footprint moon"
+        motion: zoom_in
+        tr: "Astronotlar Ay'a ayak bastı. Rüzgâr olmadığı için ayak izleri hâlâ orada duruyor."
+        en: "Astronauts walked on the Moon. There is no wind, so their footprints are still there."
+      - visual: "Earth rise from moon Apollo"
+        motion: pan_left
+        tr: "Ay'dan bakınca Dünya mavi bir bilye gibi görünür. Ne kadar güzel, değil mi?"
+        en: "From the Moon, Earth looks like a blue marble. Isn't that beautiful?"
+
+  - id: the-sun
+    emoji: "☀️"
+    title:
+      tr: "Güneş: Gökyüzündeki Yıldızımız"
+      en: "The Sun: Our Very Own Star"
+    hook:
+      tr: "En Yakın Yıldız!"
+      en: "The Closest Star!"
+    hero_prompt: >-
+      A warm friendly cartoon sun smiling over planets in a row,
+      soft golden colors, children's picture book style
+    keywords:
+      tr: ["güneş", "yıldız", "ışık", "uzay", "çocuk"]
+      en: ["sun", "star", "light", "space", "kids"]
+    facts:
+      - visual: "Sun solar surface SDO"
+        motion: zoom_in
+        tr: "Güneş aslında bir yıldız. Sadece bize çok yakın olduğu için bu kadar büyük görünüyor."
+        en: "The Sun is really a star. It looks so big because it is very close to us."
+      - visual: "solar system planets orbit"
+        motion: zoom_out
+        tr: "Bütün gezegenler Güneş'in etrafında döner. Dünya da onlardan biri."
+        en: "All the planets travel around the Sun. Earth is one of them."
+      - visual: "sunlight on Earth from space"
+        motion: pan_right
+        tr: "Güneş bize ışık ve sıcaklık verir. Onun sayesinde bitkiler büyür ve hava ısınır."
+        en: "The Sun gives us light and warmth. Thanks to it, plants can grow."
+      - visual: "solar prominence loop"
+        motion: zoom_in
+        tr: "Yüzeyinde parlak kavisler belirir. Bilim insanları bunlara ilmek der."
+        en: "Bright arcs appear on its surface. Scientists call these loops."
+      - visual: "sunrise from space station"
+        motion: pan_left
+        tr: "Güneş'e asla doğrudan bakmamalıyız. Gözlerimizi korumak için özel gözlükler kullanırız."
+        en: "We must never look straight at the Sun. We use special glasses to protect our eyes."
+
+  - id: rockets
+    emoji: "🚀"
+    title:
+      tr: "Roketler Nasıl Uçar?"
+      en: "How Do Rockets Fly?"
+    hook:
+      tr: "Yukarı, Daha Yukarı!"
+      en: "Up, Up and Away!"
+    hero_prompt: >-
+      A colorful cartoon rocket lifting off with fluffy white clouds of smoke,
+      cheerful children's picture book style, bright and exciting
+    keywords:
+      tr: ["roket", "fırlatma", "uzay aracı", "uzay", "çocuk"]
+      en: ["rocket", "launch", "spacecraft", "space", "kids"]
+    facts:
+      - visual: "rocket launch liftoff"
+        motion: zoom_out
+        tr: "Roketler bizi uzaya taşır. Kalkarken arkalarından kocaman beyaz bulutlar çıkar."
+        en: "Rockets carry us to space. Big white clouds puff out behind them as they rise."
+      - visual: "rocket engine nozzle test"
+        motion: zoom_in
+        tr: "Motorları aşağı doğru güçlü bir itiş yapar. Bu itiş roketi yukarı fırlatır."
+        en: "The engines push hard downwards. That push sends the rocket upwards."
+      - visual: "rocket stage separation"
+        motion: pan_right
+        tr: "Roketler parça parçadır. Yakıtı biten alt bölüm ayrılır ve üst kısım yoluna devam eder."
+        en: "Rockets come in parts. When the bottom part runs out of fuel it lets go and the rest flies on."
+      - visual: "rocket launch pad tower"
+        motion: zoom_in
+        tr: "Fırlatmadan önce geriye doğru sayarız. Üç, iki, bir, kalkış!"
+        en: "Before launch we count backwards. Three, two, one, lift off!"
+      - visual: "spacecraft in orbit above Earth"
+        motion: pan_left
+        tr: "Uzaya varınca motorlar susar. Araç Dünya'nın etrafında sessizce süzülmeye başlar."
+        en: "Once in space the engines go quiet. The craft glides silently around the Earth."
+
+  - id: astronaut-life
+    emoji: "👩‍🚀"
+    title:
+      tr: "Astronotlar Uzayda Nasıl Yaşar?"
+      en: "How Do Astronauts Live in Space?"
+    hook:
+      tr: "Uçarak Uyumak!"
+      en: "Sleeping While Floating!"
+    hero_prompt: >-
+      A happy cartoon astronaut floating and eating a snack inside a bright space station,
+      children's picture book style, playful and warm
+    keywords:
+      tr: ["astronot", "uzay istasyonu", "ağırlıksızlık", "uzay", "çocuk"]
+      en: ["astronaut", "space station", "floating", "space", "kids"]
+    facts:
+      - visual: "astronaut floating space station"
+        motion: zoom_in
+        tr: "Uzayda her şey havada süzülür. Astronotlar yürümez, yüzer gibi hareket eder."
+        en: "In space everything floats. Astronauts do not walk, they glide like swimmers."
+      - visual: "astronaut eating food space"
+        motion: pan_right
+        tr: "Yemekleri paketlerde gelir. Çünkü tabaktaki yemek havada uçup dağılırdı."
+        en: "Their food comes in packets. On a plate it would simply float away."
+      - visual: "astronaut sleeping bag ISS"
+        motion: zoom_out
+        tr: "Uyurken uyku tulumlarını duvara bağlarlar. Böylece gece boyunca sürüklenmezler."
+        en: "They tie their sleeping bags to the wall. That way they do not drift about at night."
+      - visual: "astronaut exercise treadmill ISS"
+        motion: zoom_in
+        tr: "Her gün spor yaparlar. Kasları güçlü kalsın diye koşu bandına kemerle bağlanırlar."
+        en: "They exercise every day. They strap themselves to a treadmill to keep their muscles strong."
+      - visual: "astronaut spacewalk EVA"
+        motion: pan_left
+        tr: "Dışarı çıkarken özel bir kıyafet giyerler. Bu kıyafet onlara temiz hava sağlar."
+        en: "To go outside they wear a special suit. The suit gives them fresh air to breathe."
+
+  - id: space-station
+    emoji: "🛰️"
+    title:
+      tr: "Gökyüzündeki Ev: Uzay İstasyonu"
+      en: "A Home in the Sky: The Space Station"
+    hook:
+      tr: "Uzayda Bir Ev!"
+      en: "A House in Space!"
+    hero_prompt: >-
+      A friendly cartoon space station with solar panels shining above a blue Earth,
+      children's picture book style, calm and bright
+    keywords:
+      tr: ["uzay istasyonu", "yörünge", "dünya", "uzay", "çocuk"]
+      en: ["space station", "orbit", "earth", "space", "kids"]
+    facts:
+      - visual: "International Space Station orbit"
+        motion: zoom_out
+        tr: "Dünya'nın çok yukarısında bir ev var. Adı Uluslararası Uzay İstasyonu."
+        en: "High above the Earth there is a home. It is called the International Space Station."
+      - visual: "ISS solar panels"
+        motion: pan_right
+        tr: "Kocaman kanatları Güneş'ten enerji toplar. Bu enerji istasyonun ışıklarını yakar."
+        en: "Its big wings collect energy from the Sun. That energy lights up the station."
+      - visual: "ISS cupola window Earth view"
+        motion: zoom_in
+        tr: "İçinde büyük bir pencere var. Astronotlar oradan Dünya'yı seyreder."
+        en: "It has a large window inside. Astronauts look down at Earth through it."
+      - visual: "ISS orbiting Earth timelapse"
+        motion: pan_left
+        tr: "İstasyon Dünya'nın etrafında çok hızlı döner. Bir günde on altı kez gün doğumu görürler!"
+        en: "The station races around the Earth. The crew sees sixteen sunrises in one day!"
+      - visual: "cargo spacecraft docking ISS"
+        motion: zoom_in
+        tr: "Kargo araçları onlara yemek ve malzeme getirir. Tıpkı uzaya giden bir kurye gibi."
+        en: "Cargo ships bring them food and supplies. Just like a delivery van for space."
+
+  - id: milky-way
+    emoji: "🌌"
+    title:
+      tr: "Samanyolu: Yıldızlardan Bir Nehir"
+      en: "The Milky Way: A River of Stars"
+    hook:
+      tr: "Milyarlarca Yıldız!"
+      en: "Billions of Stars!"
+    hero_prompt: >-
+      Two cartoon children lying on a hill looking up at a soft glowing band of stars,
+      children's picture book style, peaceful and dreamy
+    keywords:
+      tr: ["samanyolu", "galaksi", "yıldız", "gece", "çocuk"]
+      en: ["milky way", "galaxy", "stars", "night", "kids"]
+    facts:
+      - visual: "Milky Way galaxy night sky"
+        motion: pan_right
+        tr: "Karanlık bir gecede gökyüzünde soluk bir şerit görürüz. İşte o Samanyolu."
+        en: "On a dark night we see a faint band in the sky. That band is the Milky Way."
+      - visual: "spiral galaxy from above"
+        motion: zoom_out
+        tr: "Samanyolu bir galaksidir. Yani sayısız yıldızın bir araya geldiği devasa bir topluluk."
+        en: "The Milky Way is a galaxy. That means a giant family of countless stars."
+      - visual: "star cluster nebula"
+        motion: zoom_in
+        tr: "Güneş'imiz de bu galaksinin içinde. Yani biz de Samanyolu'nun bir parçasıyız."
+        en: "Our Sun lives inside this galaxy too. So we are part of the Milky Way as well."
+      - visual: "nebula star forming region"
+        motion: pan_left
+        tr: "Yıldızlar gaz ve toz bulutlarında doğar. Bu bulutlara bulutsu diyoruz."
+        en: "Stars are born in clouds of gas and dust. We call these clouds nebulae."
+      - visual: "Andromeda galaxy"
+        motion: zoom_in
+        tr: "Başka galaksiler de var. En yakın komşumuzun adı Andromeda."
+        en: "There are other galaxies too. Our nearest neighbour is called Andromeda."

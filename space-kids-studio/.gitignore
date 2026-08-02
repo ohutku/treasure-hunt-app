@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Üretim çıktıları: bölüm klasörleri çalışma alanıdır, depoya girmez.
+# Örnek çıktılar examples/ altında tutulur.
+episodes/
+
+# Yerel ayarlar (API anahtarları buraya asla yazılmamalı — ortam değişkeni kullan)
+settings.toml
+
+# OAuth sırları ve jetonları — kanal erişimi verir, asla commit'lenmemeli
+client_secret*.json
+*youtube-token.json
+
+# Fon müziği gibi telifli olabilecek yerel varlıklar
+assets/music/
